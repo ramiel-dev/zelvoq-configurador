@@ -1,0 +1,166 @@
+/* This is a workaround to ← → missing in Google Fonts web font.
+Explicitly import the missing arrows.
+See https://stackoverflow.com/questions/40822458/styled-unicode-arrows-not-showing-up-with-google-fonts-web-font
+ */
+@import url('https://fonts.googleapis.com/css?family=Fira+Sans');
+@import url('https://fonts.googleapis.com/css?family=Fira+Sans&text=%E2%86%90|%E2%86%92');
+
+html,
+body {
+  height: 100%;
+}
+.configure-tooltip {
+  font-size: 20px !important;
+  background-color: rgba(255, 255, 255, 0.4);
+}
+body {
+  position: relative;
+  color: white;
+  background-color: #0c110e;
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
+    'Segoe UI', 'Fira Sans', Helvetica, Arial, sans-serif;
+  font-weight: 300;
+  overflow: hidden;
+  margin: 0;
+  padding: 0;
+  user-select: none;
+}
+button {
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
+    'Segoe UI', 'Fira Sans', Helvetica, Arial, sans-serif;
+  font-weight: 300;
+}
+h2 {
+  margin: 0;
+  font-size: 2.25rem;
+  font-weight: bold;
+  letter-spacing: -0.025em;
+  color: #fff;
+}
+p {
+  font-size: 24px;
+}
+li {
+  list-style: none;
+}
+a {
+  color: white;
+  opacity: 0.75;
+  text-decoration: none;
+}
+a:hover {
+  opacity: 1;
+  text-decoration: none;
+  cursor: pointer;
+}
+:root {
+  /* Paleta de Zelvoq, tomada de site/styles.css del landing.
+     Los nombres de variable son los de VIA; solo cambian los valores, asi que
+     los componentes no se tocan y el rebase con upstream sigue siendo barato. */
+  --color_error: #d94b18;        /* coral  */
+  --color_light-grey: #cad5ce;
+  --color_medium-grey: #59645d;  /* muted  */
+
+  --color_dark-grey: #2b3630;
+  --color_light-jet: #1b241e;    /* dark-2 */
+  --color_jet: #111713;          /* dark   */
+  --color_warm-white: #f3f5f1;   /* bg     */
+  --color_tinge: #d2dbd4;        /* line   */
+  --color_tinge-light: #e9eee8;  /* surface-muted */
+  --color_tinge-dark: #59645d;
+  --box-shadow-keycap: inset -1px -1px 0 rgb(0 0 0 / 20%),
+    inset 1px 1px 0 rgb(255 255 255 / 20%);
+  --box-shadow-keyboard: var(--box-shadow-keycap);
+
+}
+
+html[data-theme-mode='dark'] {
+  --color_label: var(--color_medium-grey);
+  --color_label-highlighted: var(--color_light-grey);
+  --color_error: var(--color_error);
+  --border_color_icon: var(--color_medium-grey);
+  --border_color_cell: var(--color_dark-grey);
+  --bg_icon: var(--color_medium-grey);
+  --bg_icon-highlighted: var(--color_light-grey);
+  --color_icon-highlighted: var(--color_jet);
+  --bg_menu: var(--color_light-jet);
+  --color_control: var(--color_dark-grey);
+  --bg_control: var(--color_dark-grey);
+  --bg_outside-accent: var(--color_dark-grey);
+  --bg_control_disabled: var(--color_dark-grey);
+  --bg_control-highlighted: var(--color_light-grey);
+  --bg_gradient: linear-gradient(var(--color_jet), var(--color_light-jet));
+  --bg_control-disabled: transparent;
+}
+html[data-theme-mode='light'] {
+  --color_label: var(--color_medium-grey);
+  --color_label-highlighted: var(--color_light-jet);
+  --color_error: var(--color_error);
+  --border_color_icon: var(--color_medium-grey);
+  --border_color_cell: var(--color_tinge-dark);
+  --bg_icon: var(--color_medium-grey);
+  --bg_icon-highlighted: var(--color_light-jet);
+  --color_icon-highlighted: var(--color_tinge-light);
+  --bg_menu: var(--color_tinge-light);
+  --color_control: var(--color_tinge-light);
+  --color_control-disabled: var(--color_tinge-light);
+  --bg_control: var(--color_tinge);
+  --bg_outside-accent: var(--color_tinge-light);
+  --bg_control-highlighted: var(--color_warm-white);
+  --bg_control-disabled: transparent;
+  --bg_gradient: linear-gradient(
+    var(--color_tinge-light),
+    var(--color_warm-white)
+  );
+}
+
+#root {
+  background: var(--bg_gradient);
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+@font-face {
+  font-family: Symbola;
+  src: url(../public/fonts/Symbola.ttf) format('truetype');
+}
+
+@keyframes border-glow {
+  0% {
+    border: 2px dashed var(--color_accent);
+  }
+  50% {
+    border: 2px dashed var(--border_color_icon);
+  }
+  100% {
+    border: 2px dashed var(--color_accent);
+  }
+}
+@keyframes roll {
+  0% {
+    transform:  translate3d(-50px, 0px, 0) rotate(-30deg);
+  }
+  100% {
+    transform:   translate3d(50px, 0px, 0) rotate(30deg);
+  }
+}
+@keyframes text-glow {
+  0% {
+    stroke: var(--color_accent);
+  }
+  50% {
+    stroke: var(--color_label);
+  }
+  100% {
+    stroke: var(--color_accent);
+  }
+}
+
+@keyframes select-glow {
+  0% {
+    filter: brightness(0.75);
+  }
+  100% {
+    filter: brightness(1.25);
+  }
+}

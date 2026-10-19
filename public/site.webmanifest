@@ -1,0 +1,17 @@
+{
+  "name": "Configurador Zelvoq",
+  "short_name": "Zelvoq",
+  "description": "Configura tu teclado Zelvoq desde el navegador.",
+  "start_url": "/via/",
+  "scope": "/via/",
+  "icons": [
+    {
+      "src": "favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ],
+  "theme_color": "#0c110e",
+  "background_color": "#0c110e",
+  "display": "standalone"
+}
