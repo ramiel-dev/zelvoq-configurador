@@ -28,7 +28,7 @@ const CircleContainer = styled.div<{
   /* Upstream usa var(--bg_icon), un gris apagado pensado para iconos. La marca
      de Zelvoq esta hecha para fondo oscuro, como en el logo y el favicon. */
   background-color: var(--color_light-jet);
-  box-shadow: inset 0 0 0 1px rgba(52, 212, 208, 0.18);
+  box-shadow: inset 0 0 0 1px rgba(82, 212, 188, 0.18);
   height: ${(props) => props.$containerHeight}px;
   width: ${(props) => props.$containerWidth}px;
   position: relative;
@@ -77,62 +77,25 @@ type Props = {
  *
  * Los colores son los de marca y no derivan del tema a proposito: el logo
  * tiene que verse igual con cualquier tema de teclas. El acento del tema sigue
- * mandando en el circulo de progreso, que es de ChippyLoader. */
+ * mandando en el circulo de progreso, que es de ChippyLoader.
+ *
+ * La Z es la misma curva que la del logotipo de la tienda y la del favicon de
+ * aqui al lado: sale de la fuente, no esta redibujada, asi que las dos marcas
+ * no pueden separarse con el tiempo. La curva se describe con el eje Y hacia
+ * arriba, de ahi la escala negativa; el translate centra su caja -de 158 a
+ * 1680 en X- dentro del viewBox. */
 const SvgComponent: React.FC<any & {theme: Theme}> = (props) => (
   <svg
     xmlns="http://www.w3.org/2000/svg"
-    viewBox="6 8 52 48"
+    viewBox="0 0 64 64"
     x={0}
     y={0}
     {...props}
   >
-    <defs>
-      <linearGradient
-        id="zelvoq-edge"
-        x1={10}
-        y1={8}
-        x2={54}
-        y2={56}
-        gradientUnits="userSpaceOnUse"
-      >
-        <stop offset={0} stopColor="#34d4d0" />
-        <stop offset={0.52} stopColor="#f2bd4b" />
-        <stop offset={1} stopColor="#eb4aa3" />
-      </linearGradient>
-    </defs>
-    <rect
-      x={13}
-      y={31}
-      width={11}
-      height={15}
-      rx={4}
-      fill="#34d4d0"
-      opacity={0.32}
-    />
-    <rect
-      x={43}
-      y={18}
-      width={9}
-      height={13}
-      rx={4}
-      fill="#eb4aa3"
-      opacity={0.34}
-    />
     <path
-      d="M14 16h24L22 48h24"
-      fill="none"
-      stroke="url(#zelvoq-edge)"
-      strokeWidth={7}
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    />
-    <path
-      d="M25 18h22L29 46h24"
-      fill="none"
-      stroke="#f7fbf7"
-      strokeWidth={4}
-      strokeLinecap="round"
-      strokeLinejoin="round"
+      transform="translate(9.03 57.6) scale(0.025 -0.025)"
+      d="M164 0V231L1214 1737H158V2048H1674V1817L625 311H1680V0Z"
+      fill="#52d4bc"
     />
   </svg>
 );

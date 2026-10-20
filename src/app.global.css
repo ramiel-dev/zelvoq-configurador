@@ -15,8 +15,8 @@ body {
 }
 body {
   position: relative;
-  color: white;
-  background-color: #0c110e;
+  color: #f2f5ef;
+  background-color: #0b100e;
   font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
     'Segoe UI', 'Fira Sans', Helvetica, Arial, sans-serif;
   font-weight: 300;
@@ -35,7 +35,7 @@ h2 {
   font-size: 2.25rem;
   font-weight: bold;
   letter-spacing: -0.025em;
-  color: #fff;
+  color: #f2f5ef;
 }
 p {
   font-size: 24px;
@@ -44,7 +44,7 @@ li {
   list-style: none;
 }
 a {
-  color: white;
+  color: #f2f5ef;
   opacity: 0.75;
   text-decoration: none;
 }
@@ -54,19 +54,26 @@ a:hover {
   cursor: pointer;
 }
 :root {
-  /* Paleta de Zelvoq, tomada de site/styles.css del landing.
+  /* Paleta de Zelvoq, tomada de la hoja de estilos de la tienda.
      Los nombres de variable son los de VIA; solo cambian los valores, asi que
-     los componentes no se tocan y el rebase con upstream sigue siendo barato. */
-  --color_error: #d94b18;        /* coral  */
-  --color_light-grey: #cad5ce;
-  --color_medium-grey: #59645d;  /* muted  */
+     los componentes no se tocan y el rebase con upstream sigue siendo barato.
+     Al lado de cada uno va el nombre que tiene en la tienda, para poder
+     comparar las dos listas de un vistazo cuando la marca vuelva a cambiar. */
+  --color_error: #ff8f8f;        /* destructive      */
+  --color_light-grey: #f2f5ef;   /* foreground       */
+  --color_medium-grey: #acbab0;  /* muted-foreground */
 
-  --color_dark-grey: #2b3630;
-  --color_light-jet: #1b241e;    /* dark-2 */
-  --color_jet: #111713;          /* dark   */
-  --color_warm-white: #f3f5f1;   /* bg     */
-  --color_tinge: #d2dbd4;        /* line   */
-  --color_tinge-light: #e9eee8;  /* surface-muted */
+  /* La tienda no define este gris: sus bordes y controles son blanco con alfa
+     sobre el fondo. VIA lo usa ademas como relleno de controles, donde el alfa
+     se acumularia, asi que va aplanado: --border (8% de blanco) sobre --card. */
+  --color_dark-grey: #242a27;
+  --color_light-jet: #1a231d;    /* accent     */
+  --color_jet: #111814;          /* card       */
+  --color_warm-white: #f2f5ef;   /* foreground */
+  /* El modo claro no tiene equivalente en la tienda, que es solo oscura.
+     Estos tres son tintes del marfil, para que siga siendo usable. */
+  --color_tinge: #d2dbd4;
+  --color_tinge-light: #e9eee8;
   --color_tinge-dark: #59645d;
   --box-shadow-keycap: inset -1px -1px 0 rgb(0 0 0 / 20%),
     inset 1px 1px 0 rgb(255 255 255 / 20%);
@@ -77,7 +84,9 @@ a:hover {
 html[data-theme-mode='dark'] {
   --color_label: var(--color_medium-grey);
   --color_label-highlighted: var(--color_light-grey);
-  --color_error: var(--color_error);
+  /* Aqui habia un --color_error: var(--color_error) que se referenciaba a si
+     mismo. Un ciclo asi invalida la variable, asi que en oscuro --color_error
+     no valia nada y el rojo del :root nunca llegaba a pintarse. */
   --border_color_icon: var(--color_medium-grey);
   --border_color_cell: var(--color_dark-grey);
   --bg_icon: var(--color_medium-grey);
@@ -93,12 +102,16 @@ html[data-theme-mode='dark'] {
   --bg_control-disabled: transparent;
 }
 html[data-theme-mode='light'] {
-  --color_label: var(--color_medium-grey);
+  /* Los cuatro valores que siguen se apartan de la paleta de la tienda, que
+     es solo oscura: su gris apagado y su rojo estan pensados para leerse
+     sobre carbon y aqui irian sobre marfil. Son los que tenia el modo claro
+     antes, asi que no cambia de aspecto. */
+  --color_label: var(--color_tinge-dark);
   --color_label-highlighted: var(--color_light-jet);
-  --color_error: var(--color_error);
-  --border_color_icon: var(--color_medium-grey);
+  --color_error: #d94b18;
+  --border_color_icon: var(--color_tinge-dark);
   --border_color_cell: var(--color_tinge-dark);
-  --bg_icon: var(--color_medium-grey);
+  --bg_icon: var(--color_tinge-dark);
   --bg_icon-highlighted: var(--color_light-jet);
   --color_icon-highlighted: var(--color_tinge-light);
   --bg_menu: var(--color_tinge-light);

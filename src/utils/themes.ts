@@ -10,18 +10,20 @@ export type Theme = {
 export const THEMES = {
   ...{
     ZELVOQ: {
-      // Teclas oscuras con leyenda clara y acento cian, como el logo.
+      // Teclas oscuras con leyenda clara y acento menta, como el logo.
+      // Los seis valores son tokens de la tienda: las alfas van sobre --accent
+      // y las mods sobre --card, la misma jerarquia de superficies de alli.
       alpha: {
-        c: '#1b241e',
-        t: '#e9eee8',
+        c: '#1a231d',
+        t: '#f2f5ef',
       },
       mod: {
-        c: '#111713',
-        t: '#cad5ce',
+        c: '#111814',
+        t: '#acbab0',
       },
       accent: {
-        c: '#34d4d0',
-        t: '#0c110e',
+        c: '#52d4bc',
+        t: '#0b100e',
       },
     },
     OLIVIA_DARK: {
