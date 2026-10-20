@@ -69,7 +69,16 @@ export async function syncStore(): Promise<DefinitionIndex> {
     // Get hash file
     const hash = document.getElementById('definition_hash')?.dataset.hash || '';
 
-    if (hash === currentDefinitionIndex.hash) {
+    // El hash coincidiendo no basta: si lo cacheado quedo sin teclados, hay que
+    // volver a pedirlo. Sin esta comprobacion, un indice vacio guardado una vez
+    // se queda para siempre y el teclado deja de reconocerse de forma
+    // permanente, hasta que el usuario borre los datos del sitio. Nadie va a
+    // hacer eso.
+    const cacheUtilizable =
+      Object.keys(currentDefinitionIndex.supportedVendorProductIdMap ?? {})
+        .length > 0;
+
+    if (hash === currentDefinitionIndex.hash && cacheUtilizable) {
       return currentDefinitionIndex;
     }
     // Get definition index file
@@ -106,12 +115,23 @@ export async function syncStore(): Promise<DefinitionIndex> {
       hash,
       supportedVendorProductIdMap: vpidMap,
     };
+
+    // No persistir un indice vacio: seria envenenar la cache. Pasa si el
+    // servidor responde algo que parsea pero no trae teclados, por ejemplo el
+    // index.html de un fallback SPA ante un 404.
+    if (Object.keys(vpidMap).length === 0) {
+      console.warn(
+        'El indice de definiciones vino vacio; se conserva el anterior.',
+      );
+      return currentDefinitionIndex;
+    }
+
     deviceStore.set('definitionIndex', newIndex);
     deviceStore.set('definitions', {});
 
     return newIndex;
   } catch (e) {
-    console.warn(e);
+    console.warn('No se pudo sincronizar el indice de definiciones.', e);
   }
 
   return currentDefinitionIndex;
