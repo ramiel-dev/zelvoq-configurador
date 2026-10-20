@@ -5,7 +5,7 @@ import React from 'react';
 import {renderToStaticMarkup} from 'react-dom/server';
 import {Router, Route, Link, useLocation} from 'wouter';
 
-test('wouter matches real panes on refresh with slash and preserves /via links', async () => {
+test('wouter matches real panes on refresh with slash and preserves /configurador links', async () => {
   const {canonicalPath} = await import('../src/utils/router-path.ts');
   const Pane = () => React.createElement('span', null, useLocation()[0]);
   for (const route of [
@@ -21,9 +21,9 @@ test('wouter matches real panes on refresh with slash and preserves /via links',
         React.createElement(
           Router,
           {
-            base: '/via',
+            base: '/configurador',
             hook: ({base}) => [
-              canonicalPath(`/via/${route}${suffix}`.slice(base.length)),
+              canonicalPath(`/configurador/${route}${suffix}`.slice(base.length)),
               () => {},
             ],
           },
@@ -32,7 +32,7 @@ test('wouter matches real panes on refresh with slash and preserves /via links',
         ),
       );
       assert.ok(markup.includes(`<span>/${route}</span>`), markup);
-      assert.ok(markup.includes('href="/via/settings"'), markup);
+      assert.ok(markup.includes('href="/configurador/settings"'), markup);
     }
   }
 });

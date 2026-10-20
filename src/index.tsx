@@ -31,7 +31,7 @@ i18n
 
 const {MODE} = import.meta.env;
 
-// Next puede normalizar /via/settings a /via/settings/: todos los consumidores
+// Next puede normalizar /configurador/settings a /configurador/settings/: todos los consumidores
 // useLocation (selección, consola y canvas) reciben la misma ruta canónica.
 const useCanonicalLocation: typeof useBrowserLocation = (options) => {
   const [path, navigate] = useBrowserLocation(options);

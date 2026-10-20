@@ -7,7 +7,7 @@ original y el texto íntegro de LICENSE. No hay afiliación con VIA.
 Código del fork: https://github.com/ramiel-dev/zelvoq-configurador.
 
 Modificaciones Zelvoq: 19 de octubre de 2026. Esta distribución conserva los
-avisos de autoría del código upstream; la marca, integración `/via/`, scripts,
+avisos de autoría del código upstream; la marca, integración `/configurador/`, scripts,
 correcciones de almacenamiento y definiciones locales son cambios del fork.
 
 ## Desarrollo y build
@@ -20,7 +20,7 @@ npm test
 npm run dev
 ```
 
-Abrir http://localhost:5173/via/. Dev genera primero las definiciones upstream
+Abrir http://localhost:5173/configurador/. Dev genera primero las definiciones upstream
 y aplica los overrides locales. No requiere Bun ni un checkout hermano.
 
 ```sh
@@ -37,12 +37,12 @@ El symlink temporal node_modules no forma parte del repositorio.
 La instalación limpia requiere acceso al registro npm y al repositorio de teclados.
 El timestamp generado por upstream varía; el hash de contenido excluye ese timestamp.
 
-## Hosting en /via/
+## Hosting en /configurador/
 
-Servir el contenido de dist bajo /via/, con HTTPS para WebHID. Vite usa base
-/via/ y wouter base /via; las descargas de definiciones respetan BASE_URL.
+Servir el contenido de dist bajo /configurador/, con HTTPS para WebHID. Vite usa base
+/configurador/ y wouter base /configurador; las descargas de definiciones respetan BASE_URL.
 El build copia index.html solo a las rutas reales de pane-config y ErrorsPaneConfig
-(test, design, console, settings, debug, errors), permitiendo refrescar /via/test/.
+(test, design, console, settings, debug, errors), permitiendo refrescar /configurador/test/.
 El hosting debe resolver directorios a index.html. No se crean rutas ficticias
 para los submenús de Configure. La CI valida y construye, sin publicar ni usar
 secretos de despliegue. El despliegue requiere una acción explícita independiente.

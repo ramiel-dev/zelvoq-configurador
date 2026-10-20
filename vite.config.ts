@@ -10,7 +10,7 @@ const hash: string = JSON.parse(
 
 // https://vitejs.dev/config/
 export default defineConfig({
-  base: '/via/',
+  base: '/configurador/',
   plugins: [
     react(),
     {

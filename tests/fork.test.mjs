@@ -82,7 +82,7 @@ test('overrides preserve index shape, register new IDs and invalidate the cache'
 });
 
 test('subpath is wired through Vite, router and definition requests', async () => {
-  assert.match(await readFile('vite.config.ts', 'utf8'), /base: '\/via\/'/);
+  assert.match(await readFile('vite.config.ts', 'utf8'), /base: '\/configurador\/'/);
   assert.match(
     await readFile('src/index.tsx', 'utf8'),
     /<Router\s+base=.*BASE_URL/,
@@ -178,8 +178,8 @@ test(
       ...html.matchAll(/(?:src|href|content)="(\/[^" ]+)"/g),
       ...css.matchAll(/url\(["']?(\/[^)'" ]+)/g),
     ]) {
-      assert.ok(match[1].startsWith('/via/'), match[1]);
-      await readFile(`dist/${match[1].slice(5)}`);
+      assert.ok(match[1].startsWith('/configurador/'), match[1]);
+      await readFile(`dist/${match[1].slice('/configurador/'.length)}`);
     }
     assert.doesNotMatch(html, /chippy|usevia.app/i);
     const manifest = JSON.parse(await readFile('dist/site.webmanifest'));
@@ -196,17 +196,17 @@ test(
 );
 
 test(
-  'static hosting resolves /via/test/ and definitions without SPA fallback',
+  'static hosting resolves /configurador/test/ and definitions without SPA fallback',
   {skip: !process.env.TEST_DIST},
   async () => {
     const server = createServer(async (req, res) => {
       const pathname = new URL(req.url, 'http://localhost').pathname;
-      if (!pathname.startsWith('/via/') || pathname.includes('..')) {
+      if (!pathname.startsWith('/configurador/') || pathname.includes('..')) {
         res.writeHead(404).end();
         return;
       }
       try {
-        const file = `dist/${pathname.slice(5)}${pathname.endsWith('/') ? 'index.html' : ''}`;
+        const file = `dist/${pathname.slice('/configurador/'.length)}${pathname.endsWith('/') ? 'index.html' : ''}`;
         res.end(await readFile(file));
       } catch {
         res.writeHead(404).end();
@@ -219,33 +219,33 @@ test(
       });
       const origin = `http://127.0.0.1:${server.address().port}`;
       for (const path of [
-        '/via/',
-        '/via/test/',
-        '/via/design/',
-        '/via/console/',
-        '/via/settings/',
-        '/via/debug/',
-        '/via/errors/',
+        '/configurador/',
+        '/configurador/test/',
+        '/configurador/design/',
+        '/configurador/console/',
+        '/configurador/settings/',
+        '/configurador/debug/',
+        '/configurador/errors/',
       ]) {
         const response = await fetch(origin + path);
         assert.equal(response.status, 200, path);
-        assert.match(await response.text(), /\/via\/assets\//);
+        assert.match(await response.text(), /\/configurador\/assets\//);
       }
       const index = await (
-        await fetch(`${origin}/via/definitions/supported_kbs.json`)
+        await fetch(`${origin}/configurador/definitions/supported_kbs.json`)
       ).json();
       const id = index.vendorProductIds.v3[0];
       assert.equal(
-        (await fetch(`${origin}/via/definitions/v3/${id}.json`)).status,
+        (await fetch(`${origin}/configurador/definitions/v3/${id}.json`)).status,
         200,
       );
       assert.equal(
         typeof (await (
-          await fetch(`${origin}/via/definitions/hash.json`)
+          await fetch(`${origin}/configurador/definitions/hash.json`)
         ).json()),
         'string',
       );
-      assert.equal((await fetch(`${origin}/via/configure/`)).status, 404);
+      assert.equal((await fetch(`${origin}/configurador/configure/`)).status, 404);
     } finally {
       await new Promise((resolve) => server.close(resolve));
     }
