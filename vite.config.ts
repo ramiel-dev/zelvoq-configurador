@@ -11,6 +11,11 @@ const hash: string = JSON.parse(
 // https://vitejs.dev/config/
 export default defineConfig({
   base: '/configurador/',
+  build: {
+    // Sourcemaps en produccion: sin ellos un fallo en runtime solo da
+    // offsets minificados y no se puede diagnosticar nada.
+    sourcemap: true,
+  },
   plugins: [
     react(),
     {
