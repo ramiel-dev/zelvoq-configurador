@@ -30,10 +30,15 @@ test('overrides preserve index shape, register new IDs and invalidate the cache'
     await writeFile(join(output, 'supported_kbs.json'), JSON.stringify(index));
     await writeFile(join(output, 'v2/1.json'), '{"name":"upstream"}');
     await writeFile(join(output, 'hash.json'), '"upstream"');
+    // Definicion V3 completa: el script la pasa por el reader, que exige
+    // nombre, matriz y un layouts.keymap en formato KLE.
     const definition = {
+      name: 'Prueba',
       vendorId: '0x0001',
       productId: '0x0002',
+      matrix: {rows: 1, cols: 2},
       menus: ['qmk_rgb_matrix'],
+      layouts: {keymap: [[{x: 0}, '0,0', '0,1']]},
     };
     const run = () => {
       const result = spawnSync(
@@ -52,10 +57,17 @@ test('overrides preserve index shape, register new IDs and invalidate the cache'
       ...index,
       vendorProductIds: {v2: [1], v3: [2, 65538]},
     });
-    assert.deepEqual(
-      JSON.parse(await readFile(join(output, 'v3/65538.json'))),
-      definition,
+    // Lo publicado es la definicion transformada por el reader, no la fuente:
+    // vendorProductId en vez de vendorId/productId, y layouts.keys parseado
+    // desde el KLE. Publicar la fuente dejaba layouts.keys sin definir y la
+    // app reventaba al conectar el teclado.
+    const publicada = JSON.parse(
+      await readFile(join(output, 'v3/65538.json')),
     );
+    assert.equal(publicada.vendorProductId, 65538);
+    assert.equal(publicada.vendorId, undefined);
+    assert.deepEqual(publicada.menus, definition.menus);
+    assert.equal(publicada.layouts.keys.length, 2);
     const hash = await readFile(join(output, 'hash.json'), 'utf8');
     assert.equal(typeof JSON.parse(hash), 'string');
     run();
