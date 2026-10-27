@@ -131,18 +131,9 @@ export const getCustomDefinitions = (state: RootState) =>
 export const getLayoutOptionsMap = (state: RootState) =>
   state.definitions.layoutOptionsMap;
 
-export const getDefinitions = createSelector(
-  getBaseDefinitions,
-  getCustomDefinitions,
-  (definitions, customDefinitions) => {
-    return Object.entries(customDefinitions).reduce(
-      (p, [id, definitionMap]) => {
-        return {...p, [id]: {...p[id], ...definitionMap}};
-      },
-      definitions,
-    );
-  },
-);
+// Public configurator uses the reviewed, bundled definitions only. Internal
+// drafts remain stored separately and never override the product definition.
+export const getDefinitions = getBaseDefinitions;
 
 export const getSelectedDefinition = createSelector(
   getDefinitions,

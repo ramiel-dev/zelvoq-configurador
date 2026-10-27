@@ -18,6 +18,8 @@ import * as Keycode from './configure-panes/keycode';
 import * as Lighting from './configure-panes/lighting';
 import * as Macros from './configure-panes/macros';
 import * as SaveLoad from './configure-panes/save-load';
+import * as Oled from './configure-panes/oled';
+import {isZelvoqPlusDefinition} from 'src/utils/zelvoq-oled';
 import * as Layouts from './configure-panes/layouts';
 import * as RotaryEncoder from './configure-panes/custom/satisfaction75';
 import {makeCustomMenus} from './configure-panes/custom/menu-generator';
@@ -37,7 +39,13 @@ import {useDispatch} from 'react-redux';
 import {reloadConnectedDevices} from 'src/store/devicesThunks';
 import {getV3MenuComponents} from 'src/store/menusSlice';
 import {getIsMacroFeatureSupported} from 'src/store/macrosSlice';
-import {getConnectedDevices, getSupportedIds} from 'src/store/devicesSlice';
+import {
+  getConnectedDevices,
+  getSupportedIds,
+  getSelectedConnectedDevice,
+  getIsSelectedDeviceReady,
+  getSelectedDevicePath,
+} from 'src/store/devicesSlice';
 import {isElectron} from 'src/utils/running-context';
 import {useAppDispatch} from 'src/store/hooks';
 import {MenuTooltip} from '../inputs/tooltip';
@@ -74,6 +82,7 @@ const Rows = [
   Lighting,
   SaveLoad,
   RotaryEncoder,
+  Oled,
   ...makeCustomMenus([]),
 ];
 
@@ -92,13 +101,21 @@ const getRowsForKeyboard = (): typeof Rows => {
   const v3Menus = useAppSelector(getV3MenuComponents);
   const selectedDefinition = useAppSelector(getSelectedDefinition);
   const numberOfLayers = useAppSelector(getNumberOfLayers);
+  const device = useAppSelector(getSelectedConnectedDevice);
+  const ready = useAppSelector(getIsSelectedDeviceReady);
+  const includeOled =
+    ready && isZelvoqPlusDefinition(selectedDefinition, device);
+  const withOled = (rows: typeof Rows): typeof Rows =>
+    includeOled ? [...rows, Oled] : rows;
 
   if (!selectedDefinition) {
     return [];
   } else if (isVIADefinitionV2(selectedDefinition)) {
-    return getRowsForKeyboardV2(selectedDefinition, showMacros, numberOfLayers);
+    return withOled(
+      getRowsForKeyboardV2(selectedDefinition, showMacros, numberOfLayers),
+    );
   } else if (isVIADefinitionV3(selectedDefinition)) {
-    return [
+    return withOled([
       ...filterInferredRows(selectedDefinition, showMacros, numberOfLayers, [
         Keycode,
         Layouts,
@@ -106,7 +123,7 @@ const getRowsForKeyboard = (): typeof Rows => {
         SaveLoad,
       ]),
       ...v3Menus,
-    ];
+    ]);
   } else {
     return [];
   }
@@ -252,6 +269,8 @@ const ConfigureGrid = () => {
   const dispatch = useDispatch();
 
   const [selectedRow, setRow] = useState(0);
+  const devicePath = useAppSelector(getSelectedDevicePath);
+  useEffect(() => setRow(0), [devicePath]);
   const KeyboardRows = getRowsForKeyboard();
   const SelectedPane = KeyboardRows[selectedRow]?.Pane;
   const selectedTitle = KeyboardRows[selectedRow]?.Title;

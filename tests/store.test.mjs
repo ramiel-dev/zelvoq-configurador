@@ -10,7 +10,6 @@ test('wouter matches real panes on refresh with slash and preserves /configurado
   const Pane = () => React.createElement('span', null, useLocation()[0]);
   for (const route of [
     'test',
-    'design',
     'console',
     'settings',
     'debug',

@@ -1,5 +1,5 @@
 import {UnconnectedGlobalMenu} from './components/menus/global';
-import {Route} from 'wouter';
+import {Route, Redirect} from 'wouter';
 import PANES from './utils/pane-config';
 import {Home} from './components/Home';
 import {createGlobalStyle} from 'styled-components';
@@ -52,6 +52,9 @@ export default () => {
         <CanvasRouter />
 
         <Home hasHIDSupport={hasHIDSupport}>
+          <Route path="/design">
+            <Redirect to="/" replace />
+          </Route>
           {RouteComponents}
           {showConsoleTab && (
             <PersistentPane $active={location === '/console'}>

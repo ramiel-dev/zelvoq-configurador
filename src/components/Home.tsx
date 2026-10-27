@@ -241,7 +241,7 @@ export const Home: React.FC<HomeProps> = (props) => {
           }}
         >
           {t(
-            "VIA could not find a {{definitionVersion}} definition for {{deviceName}}.\nVID: {{vid}} | PID: {{pid}}\n\nThis means that:\n- this keyboard is not officially supported through the remote definition database\n- the definition file of the keyboard has not been sideloaded through the Design tab\n\nPlease contact your keyboard's manufacturer or vendor to add it to the database, or upload the JSON definition provided by your keyboard's manufacturer or vendor in the Design tab.",
+            'No se encontró una definición compatible para {{deviceName}} ({{definitionVersion}}).\nVID: {{vid}} | PID: {{pid}}\n\nLas definiciones las administra Zelvoq. Contacta a soporte e indica el modelo y estos identificadores.',
             {
               definitionVersion:
                 unresolvedDefinitionDevice.requiredDefinitionVersion.toUpperCase(),

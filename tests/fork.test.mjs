@@ -233,7 +233,6 @@ test(
       for (const path of [
         '/configurador/',
         '/configurador/test/',
-        '/configurador/design/',
         '/configurador/console/',
         '/configurador/settings/',
         '/configurador/debug/',
@@ -263,3 +262,30 @@ test(
     }
   },
 );
+
+
+test('public configurator excludes definition editing and ignores previously stored drafts', async () => {
+  const panes = await readFile('src/utils/pane-config.ts', 'utf8');
+  const settings = await readFile('src/components/panes/settings.tsx', 'utf8');
+  const devices = await readFile('src/store/devicesThunks.ts', 'utf8');
+  assert.doesNotMatch(panes, /DesignTab|path: ['"]\/design/);
+  assert.doesNotMatch(settings, /Show Design tab|toggleCreatorMode|showDesignTabNotice/);
+  assert.doesNotMatch(devices, /dispatch\(loadStoredCustomDefinitions\(\)\)/);
+  const definitions = await readFile('src/store/definitionsSlice.ts', 'utf8');
+  assert.match(definitions, /export const getDefinitions = getBaseDefinitions/);
+  const home = await readFile('src/components/Home.tsx', 'utf8');
+  assert.doesNotMatch(home, /upload the JSON definition|sideloaded through the Design tab/);
+  for (const renderer of ['two-string', 'three-fiber']) {
+    const canvas = await readFile(`src/components/${renderer}/canvas-router.tsx`, 'utf8');
+    assert.doesNotMatch(canvas, /import \{Design\}|<Design /);
+  }
+  if (process.env.TEST_DIST) {
+    await assert.rejects(readFile('dist/design/index.html'), {code: 'ENOENT'});
+    const scripts = (await readdir('dist/assets')).filter(name => /^index-.*\.js$/.test(name));
+    const built = (await Promise.all(scripts.map(name => readFile(`dist/assets/${name}`, 'utf8')))).join('\n');
+    assert.doesNotMatch(built, /Upload Draft Definition|Load Draft Definition|ConfirmDesignModal/);
+    const plus = JSON.parse(await readFile('dist/definitions/v3/302579715.json', 'utf8'));
+    assert.equal(plus.name, 'Zelvoq 60 Plus');
+    assert.ok(plus.layouts.keys.length > 61);
+  }
+});

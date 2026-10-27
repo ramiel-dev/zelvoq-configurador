@@ -27,7 +27,7 @@ no se usan aqui.
 
 Existe porque las definiciones oficiales de VIA no describen la iluminacion de
 nuestros teclados, asi que el panel de luces salia vacio. Este build corrige las
-definiciones de Corne y Lily58. Todo lo demas es VIA.
+definiciones de Corne y Lily58. La Plus incorpora además un panel Pantalla con previsualización de sus modos OLED.
 
 Si redistribuyes una version modificada, la GPL-3.0 te obliga a publicar su
 codigo y sus scripts de build.
@@ -56,3 +56,40 @@ y abrir http://localhost:5173/configurador/.
 
 Si el teclado no aparece o algo no responde, escribenos a
 [zelvoq.cl](https://zelvoq.cl). Incluye el modelo y el navegador que usas.
+
+## Pantalla OLED de la Plus
+
+La sección **Pantalla** permite elegir Pulso, Compañero o Firma, previsualizar
+la bienvenida y pulsar **Aplicar y guardar**. La app confirma el modo activo
+y el leído de EEPROM. Las vistas previas son locales, con actividad de ejemplo.
+
+Requiere firmware Plus con protocolo OLED v1. La app lo comprueba antes de
+escribir; un firmware anterior mantiene las vistas previas pero pide actualizar
+para habilitar Aplicar. No hace falta remapear una tecla ni resetear VIA.
+
+Se reutiliza la conexión VIA y su cola: canal custom0, GETcap70, GET/SETmode71
+y SAVE. No se escriben RGB, keymaps o macros. Los errores/desconexiones no
+se presentan como guardado correcto, y cambiar de dispositivo cancela las
+operaciones pendientes de esa selección.
+
+Pruebas: `npm test` incluye protocolo y carreras de sesión. Para probar el
+componente en navegador aislado, levantar Vite y ejecutar
+`runOledBrowserChecks(page)` de `tests/oled.browser.mjs` con una página de
+Playwright. `tests/oled-harness.html` simula la API; `oled-webhid-mock.js` se
+inyecta con `page.addInitScript` para comprobar la app completa y KeyboardAPI
+contra reportes HID de32bytes. Estos fixtures no se incluyen en dist ni acceden
+al dispositivo real. La carga del nuevo firmware y su persistencia física
+se validan aparte.
+
+## Definiciones administradas por Zelvoq
+
+El build público no incluye la sección Diseño, el editor/cargador de JSON ni
+la opción para habilitarlo. Tampoco carga borradores de definiciones guardados
+anteriormente en el navegador; se conservan esos datos sin borrarlos. El
+cliente configura teclas, capas, macros, luces y pantalla con las definiciones
+incluidas automáticamente.
+
+Las definiciones se mantienen internamente en `zelvoq/definitions/`, pasan
+por `zelvoq-definitions` y se publican con un build revisado. El código fuente
+upstream del editor permanece para mantenimiento interno, sin ruta ni controles
+en la aplicación pública.

@@ -1,11 +1,8 @@
 import {useProgress} from '@react-three/drei';
-import {DefinitionVersionMap, KeyColorType} from '@the-via/reader';
+import {KeyColorType} from '@the-via/reader';
 import React, {useCallback, useEffect, useMemo, useRef} from 'react';
 import {shallowEqual} from 'react-redux';
-import {
-  getCustomDefinitions,
-  getSelectedDefinition,
-} from 'src/store/definitionsSlice';
+import {getSelectedDefinition} from 'src/store/definitionsSlice';
 import {useAppDispatch, useAppSelector} from 'src/store/hooks';
 import {
   clearSelectedKey,
@@ -13,17 +10,13 @@ import {
   getLoadProgress,
   updateSelectedKey,
 } from 'src/store/keymapSlice';
-import {
-  getDesignDefinitionVersion,
-  getSelectedTheme,
-} from 'src/store/settingsSlice';
+import {getSelectedTheme} from 'src/store/settingsSlice';
 import {getDarkenedColor} from 'src/utils/color-math';
 import {OVERRIDE_HID_CHECK} from 'src/utils/override';
 import {useSize} from 'src/utils/use-size';
 import styled from 'styled-components';
 import {useLocation} from 'wouter';
 import {ConfigureKeyboard} from '../n-links/keyboard/configure';
-import {Design} from '../n-links/keyboard/design';
 import {Test} from '../n-links/keyboard/test';
 
 const KeyboardBG = styled.div<{
@@ -66,21 +59,11 @@ export const CanvasRouter = () => {
   const dispatch = useAppDispatch();
   const containerDimensions = useSize(containerRef);
   const dimensions = useSize(body);
-  const localDefinitions = Object.values(useAppSelector(getCustomDefinitions));
   const selectedDefinition = useAppSelector(getSelectedDefinition);
-  const definitionVersion = useAppSelector(getDesignDefinitionVersion);
   const theme = useAppSelector(getSelectedTheme);
   const accentColor = useMemo(() => theme[KeyColorType.Accent].c, [theme]);
   const showLoader =
     path === '/' && (!selectedDefinition || loadProgress !== 1);
-  const versionDefinitions: DefinitionVersionMap[] = useMemo(
-    () =>
-      localDefinitions.filter(
-        (definitionMap) => definitionMap[definitionVersion],
-      ),
-    [localDefinitions, definitionVersion],
-  );
-  const hideDesignScene = '/design' === path && !versionDefinitions.length;
   const hideConfigureScene =
     '/' === path &&
     (!selectedDefinition || (loadProgress + progress / 100) / 2 !== 1);
@@ -92,8 +75,7 @@ export const CanvasRouter = () => {
   const showAuthorizeButton = 'hid' in navigator || OVERRIDE_HID_CHECK;
   const hideCanvasScene =
     !showAuthorizeButton ||
-    ['/settings', '/errors', '/console'].includes(path) ||
-    hideDesignScene ||
+    ['/settings', '/errors', '/console', '/design'].includes(path) ||
     hideConfigureScene;
   const configureKeyboardIsSelectable = useAppSelector(
     getConfigureKeyboardIsSelectable,
@@ -148,15 +130,11 @@ const getRouteX = (route: string) => {
   const configurePosition = 0;
   const spaceMultiplier = 100;
   const testPosition = -spaceMultiplier * 1;
-  const designPosition = -spaceMultiplier * 2;
   const debugPosition = -spaceMultiplier * 3;
   const otherPosition = -spaceMultiplier * 3;
   switch (route) {
     case '/debug': {
       return debugPosition;
-    }
-    case '/design': {
-      return designPosition;
     }
     case '/test': {
       return testPosition;
@@ -245,9 +223,6 @@ const Keyboards = React.memo((props: any) => {
       </KeyboardRouteGroup>
       <KeyboardRouteGroup $position={1}>
         <Test dimensions={dimensions} nDimension={'2D'} />
-      </KeyboardRouteGroup>
-      <KeyboardRouteGroup $position={2}>
-        <Design dimensions={dimensions} nDimension={'2D'} />
       </KeyboardRouteGroup>
       <KeyboardRouteGroup $position={3}></KeyboardRouteGroup>
     </>

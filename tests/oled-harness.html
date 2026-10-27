@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="es" data-theme-mode="dark"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Prueba aislada OLED Zelvoq</title></head>
+<body><div id="root"></div>
+<script type="module">
+import React from 'react';
+import {createRoot} from 'react-dom/client';
+import {OledPanel} from '../src/components/panes/configure-panes/oled-panel.tsx';
+import '../src/app.global.css';
+document.body.style.cssText='margin:0;height:auto;overflow:auto';
+document.documentElement.style.setProperty('--color_accent','#91b9a4');
+document.documentElement.style.setProperty('--color_inside-accent','#111814');
+const root=createRoot(document.getElementById('root'));
+const calls=[];const models=new Map();const apis=new Map();const pending=[];
+let selected='A';let ready=true;
+function model(key){if(!models.has(key))models.set(key,{mode:0,storedMode:0,behavior:'ok',pause:null});return models.get(key);}
+async function barrier(m,kind){if(m.pause===kind){m.pause=null;await new Promise(resolve=>pending.push(resolve));}}
+function api(key){
+ if(apis.has(key))return apis.get(key);
+ const result={
+  async getCustomMenuValue(bytes){
+   const m=model(key);calls.push({key,op:'get',bytes});await barrier(m,'get');
+   if(m.behavior==='unsupported')throw Error('Receiving incorrect response for command');
+   if(m.behavior==='network')throw Error('Device disconnected');
+   if(bytes[1]===0x70)return[0x70,0x5a,0x51,1,3,m.mode,m.storedMode];
+   return[0x71,m.mode,m.storedMode];
+  },
+  async setCustomMenuValue(...bytes){const m=model(key);calls.push({key,op:'set',bytes});m.mode=bytes[2];await barrier(m,'set');},
+  async commitCustomMenu(channel){const m=model(key);calls.push({key,op:'save',channel});if(m.behavior!=='mismatch')m.storedMode=m.mode;await barrier(m,'save');},
+ };
+ apis.set(key,result);return result;
+}
+function render(){root.render(React.createElement(OledPanel,{api:ready?api(selected):null,deviceKey:selected,ready}));}
+window.oledHarness={calls,models,pending,
+ select(key,isReady=true){selected=key;ready=isReady;render();},
+ behavior(value){model(selected).behavior=value;},
+ pause(kind){model(selected).pause=kind;},
+ release(){pending.splice(0).forEach(fn=>fn());},
+ state(key=selected){return {...model(key)};},
+};
+render();
+</script></body></html>

@@ -13,7 +13,6 @@ import {
   loadLayoutOptions,
   updateDefinitions,
   getDefinitions,
-  loadStoredCustomDefinitions,
 } from './definitionsSlice';
 import {loadKeymapFromDevice} from './keymapSlice';
 import {updateLightingData} from './lightingSlice';
@@ -266,6 +265,7 @@ export const loadSupportedIds = (): AppThunk => async (dispatch) => {
   dispatch(updateSupportedIds(getSupportedIdsFromStore()));
   // John you drongo, don't trust the compiler, dispatches are totes awaitable for async thunks
   await dispatch(updateDefinitions(getDefinitionsFromStore()));
-  dispatch(loadStoredCustomDefinitions());
+  // Public builds use only bundled definitions; retain internal IndexedDB
+  // drafts without loading or deleting them.
   dispatch(reloadConnectedDevices());
 };

@@ -9,16 +9,13 @@ import {
   useProgress,
 } from '@react-three/drei';
 import {Canvas} from '@react-three/fiber';
-import {DefinitionVersionMap, KeyColorType} from '@the-via/reader';
+import {KeyColorType} from '@the-via/reader';
 import cubeySrc from 'assets/models/cubey.glb';
 import zelvoqMark from 'assets/images/zelvoq-mark.png';
 import glbSrc from 'assets/models/keyboard_components.glb';
 import React, {Suspense, useCallback, useEffect, useMemo, useRef} from 'react';
 import {shallowEqual} from 'react-redux';
-import {
-  getCustomDefinitions,
-  getSelectedDefinition,
-} from 'src/store/definitionsSlice';
+import {getSelectedDefinition} from 'src/store/definitionsSlice';
 import {reloadConnectedDevices} from 'src/store/devicesThunks';
 import {useAppDispatch, useAppSelector} from 'src/store/hooks';
 import {
@@ -26,17 +23,13 @@ import {
   getLoadProgress,
   updateSelectedKey,
 } from 'src/store/keymapSlice';
-import {
-  getDesignDefinitionVersion,
-  getSelectedTheme,
-} from 'src/store/settingsSlice';
+import {getSelectedTheme} from 'src/store/settingsSlice';
 import {OVERRIDE_HID_CHECK} from 'src/utils/override';
 import {useSize} from 'src/utils/use-size';
 import {Object3D, SpotLight as ThreeSpotLight} from 'three';
 import {useLocation} from 'wouter';
 import {AccentButtonLarge} from '../inputs/accent-button';
 import {ConfigureKeyboard} from '../n-links/keyboard/configure';
-import {Design} from '../n-links/keyboard/design';
 import {Test} from '../n-links/keyboard/test';
 import {Camera} from './camera';
 import {LoaderCubey} from './loader-cubey';
@@ -86,22 +79,12 @@ export const NonSuspenseCanvasRouter = () => {
   const {progress} = useProgress();
   const dispatch = useAppDispatch();
   const dimensions = useSize(body);
-  const localDefinitions = Object.values(useAppSelector(getCustomDefinitions));
   const selectedDefinition = useAppSelector(getSelectedDefinition);
-  const definitionVersion = useAppSelector(getDesignDefinitionVersion);
   const theme = useAppSelector(getSelectedTheme);
   const accentColor = useMemo(() => theme[KeyColorType.Accent].c, [theme]);
   const showLoader =
     path === '/' && (!selectedDefinition || loadProgress !== 1);
   useGLTF(glbSrc, true, true);
-  const versionDefinitions: DefinitionVersionMap[] = useMemo(
-    () =>
-      localDefinitions.filter(
-        (definitionMap) => definitionMap[definitionVersion],
-      ),
-    [localDefinitions, definitionVersion],
-  );
-  const hideDesignScene = '/design' === path && !versionDefinitions.length;
   const hideConfigureScene =
     '/' === path &&
     (!selectedDefinition || (loadProgress + progress / 100) / 2 !== 1);
@@ -113,8 +96,7 @@ export const NonSuspenseCanvasRouter = () => {
   const showAuthorizeButton = 'hid' in navigator || OVERRIDE_HID_CHECK;
   const hideCanvasScene =
     !showAuthorizeButton ||
-    ['/settings', '/errors', '/console'].includes(path) ||
-    hideDesignScene ||
+    ['/settings', '/errors', '/console', '/design'].includes(path) ||
     hideConfigureScene;
   const configureKeyboardIsSelectable = useAppSelector(
     getConfigureKeyboardIsSelectable,
@@ -263,15 +245,11 @@ const getRouteX = (route: string) => {
   const configurePosition = 0;
   const spaceMultiplier = 20;
   const testPosition = -spaceMultiplier * 1;
-  const designPosition = -spaceMultiplier * 2;
   const debugPosition = -spaceMultiplier * 3;
   const otherPosition = -spaceMultiplier * 3;
   switch (route) {
     case '/debug': {
       return debugPosition;
-    }
-    case '/design': {
-      return designPosition;
     }
     case '/test': {
       return testPosition;
@@ -308,7 +286,6 @@ const KeyboardGroup = React.memo((props: any) => {
 const Keyboards = React.memo((props: any) => {
   const {loadProgress, dimensions, configureKeyboardIsSelectable} = props;
   const testPosition = -getRouteX('/test');
-  const designPosition = -getRouteX('/design');
   const debugPosition = -getRouteX('/debug');
 
   return (
@@ -322,9 +299,6 @@ const Keyboards = React.memo((props: any) => {
       </group>
       <group position-x={testPosition}>
         <Test dimensions={dimensions} nDimension={'3D'} />
-      </group>
-      <group position-x={designPosition}>
-        <Design dimensions={dimensions} nDimension={'3D'} />
       </group>
       <group position-x={debugPosition}></group>
     </>

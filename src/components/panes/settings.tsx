@@ -1,4 +1,4 @@
-import {useEffect, useState} from 'react';
+import {useState} from 'react';
 import {Pane} from './pane';
 import styled from 'styled-components';
 import {
@@ -15,12 +15,9 @@ import {AccentSlider} from '../inputs/accent-slider';
 import {useDispatch} from 'react-redux';
 import {useAppSelector} from 'src/store/hooks';
 import {
-  getShowDesignTab,
   getShowConsoleTab,
-  getShowDesignTabConfirmationNotice,
   getDisableFastRemap,
   getShowSliderValuesMode,
-  toggleCreatorMode,
   toggleConsoleTab,
   toggleFastRemap,
   updateShowSliderValuesMode,
@@ -30,7 +27,6 @@ import {
   updateThemeName,
   getRenderMode,
   updateRenderMode,
-  setShowDesignTabConfirmationNotice,
 } from 'src/store/settingsSlice';
 import {AccentSelect} from '../inputs/accent-select';
 import {THEMES} from 'src/utils/themes';
@@ -42,7 +38,6 @@ import {getSelectedConnectedDevice} from 'src/store/devicesSlice';
 import {ErrorMessage} from '../styled';
 import {webGLIsAvailable} from 'src/utils/test-webgl';
 import {useTranslation} from 'react-i18next';
-import {MessageDialog} from '../inputs/message-dialog';
 
 const Container = styled.div`
   display: flex;
@@ -64,11 +59,7 @@ const SettingsErrorMessage = styled(ErrorMessage)`
 export const Settings = () => {
   const {t} = useTranslation();
   const dispatch = useDispatch();
-  const showDesignTab = useAppSelector(getShowDesignTab);
   const showConsoleTab = useAppSelector(getShowConsoleTab);
-  const showDesignTabConfirmationNotice = useAppSelector(
-    getShowDesignTabConfirmationNotice,
-  );
   const disableFastRemap = useAppSelector(getDisableFastRemap);
   const ShowSliderValuesMode = useAppSelector(getShowSliderValuesMode);
   const themeMode = useAppSelector(getThemeMode);
@@ -77,14 +68,6 @@ export const Settings = () => {
   const selectedDevice = useAppSelector(getSelectedConnectedDevice);
 
   const [showDiagnostics, setShowDiagnostics] = useState(false);
-  const [showDesignTabNotice, setShowDesignTabNotice] = useState(false);
-
-  useEffect(() => {
-    if (showDesignTabConfirmationNotice) {
-      setShowDesignTabNotice(true);
-      dispatch(setShowDesignTabConfirmationNotice(false));
-    }
-  }, [dispatch, showDesignTabConfirmationNotice]);
 
   const themeSelectOptions = Object.keys(THEMES).map((k) => ({
     label: t(k.replaceAll('_', ' ')),
@@ -144,15 +127,6 @@ export const Settings = () => {
         </MenuCell>
         <SpanOverflowCell style={{flex: 1, borderWidth: 0}}>
           <Container>
-            <ControlRow>
-              <Label>{t('Show Design tab')}</Label>
-              <Detail>
-                <AccentSlider
-                  onChange={() => dispatch(toggleCreatorMode())}
-                  isChecked={showDesignTab}
-                />
-              </Detail>
-            </ControlRow>
             <ControlRow>
               <Label>{t('Show HID Console tab')}</Label>
               <Detail>
@@ -234,15 +208,6 @@ export const Settings = () => {
               </Detail>
             </ControlRow>
           </Container>
-          <MessageDialog
-            isOpen={showDesignTabNotice}
-            onConfirm={() => setShowDesignTabNotice(false)}
-            confirmLabel="OK"
-          >
-            {t(
-              'You didn\'t click "Confirm". To enable the Design tab, you must confirm first.',
-            )}
-          </MessageDialog>
           {showDiagnostics && selectedDevice ? (
             <DiagnosticContainer>
               <ControlRow>

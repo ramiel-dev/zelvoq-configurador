@@ -3,7 +3,7 @@
   "scripts": {
     "dev": "npm run build:kbs && npm run zelvoq-definitions && vite --force",
     "build": "node scripts/build.mjs",
-    "test": "node tests/fork.test.mjs && node --import tsx tests/store.test.mjs",
+    "test": "node tests/fork.test.mjs && node --import tsx tests/store.test.mjs && node --import tsx tests/oled.test.mjs",
     "test:dist": "TEST_DIST=1 node tests/fork.test.mjs",
     "typecheck": "tsc --noEmit",
     "zelvoq-definitions": "node scripts/zelvoq-definitions.mjs",
