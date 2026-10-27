@@ -2,6 +2,7 @@ import React, {useEffect, useMemo, useRef, useState} from 'react';
 import styled from 'styled-components';
 import {
   applyOledMode,
+  applyOledSettings,
   OLED_MODES,
   readOledState,
   StaleOledSessionError,
@@ -41,12 +42,28 @@ const Content = styled.div`
   max-width: 760px;
   margin: 0 auto;
 `;
+const Power = styled.label`
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 44px;
+  margin-top: 20px;
+  font-size: 18px;
+  input {
+    width: 22px;
+    height: 22px;
+    accent-color: var(--color_accent);
+  }
+`;
 const Preview = styled.div`
   background: #080b0a;
   border: 1px solid var(--border_color_cell);
   border-radius: 12px;
   padding: 24px;
   margin: 22px 0 8px;
+  .off {
+    aspect-ratio: 4;
+  }
   img {
     display: block;
     width: 100%;
@@ -136,6 +153,7 @@ export function OledPanel({
   ready: boolean;
 }) {
   const [chosen, setChosen] = useState<OledMode>(0);
+  const [enabled, setEnabled] = useState(true);
   const [confirmed, setConfirmed] = useState<OledState | null>(null);
   const [phase, setPhase] = useState<Phase>('reading');
   const [message, setMessage] = useState('');
@@ -168,6 +186,7 @@ export function OledPanel({
       if (!guard(ticket)) return;
       setConfirmed(state);
       setChosen(state.mode);
+      setEnabled(state.enabled ?? true);
       setPhase('ready');
     } catch (error) {
       if (!guard(ticket)) return;
@@ -214,16 +233,24 @@ export function OledPanel({
     setPhase('applying');
     setMessage('');
     try {
-      const result = await applyOledMode(
-        api,
-        mode,
-        () => guard(ticket),
-        deviceKey,
-      );
+      const result =
+        confirmed.enabled === undefined
+          ? await applyOledMode(api, mode, () => guard(ticket), deviceKey)
+          : await applyOledSettings(
+              api,
+              mode,
+              enabled,
+              () => guard(ticket),
+              deviceKey,
+            );
       if (!guard(ticket)) return;
       setConfirmed(result);
       setPhase('ready');
-      setMessage(`${OLED_MODES[mode]} guardado en el teclado.`);
+      setMessage(
+        result.enabled === false
+          ? 'Pantalla apagada y guardada en el teclado.'
+          : `${OLED_MODES[mode]} guardado en el teclado.`,
+      );
     } catch (error) {
       if (!guard(ticket) || error instanceof StaleOledSessionError) return;
       setConfirmed(null);
@@ -240,7 +267,11 @@ export function OledPanel({
   const canApply =
     phase === 'ready' &&
     confirmed &&
-    (chosen !== confirmed.mode || chosen !== confirmed.storedMode);
+    (chosen !== confirmed.mode ||
+      chosen !== confirmed.storedMode ||
+      (confirmed.enabled !== undefined &&
+        (enabled !== confirmed.enabled ||
+          enabled !== confirmed.storedEnabled)));
   const image = welcome ? 'welcome' : files[chosen];
   return (
     <Surface aria-label="Pantalla OLED">
@@ -250,29 +281,60 @@ export function OledPanel({
           Elige cómo se ve tu Zelvoq. Prueba los diseños y guarda tu favorito en
           el teclado.
         </p>
+        <Power>
+          <input
+            type="checkbox"
+            checked={enabled}
+            disabled={phase !== 'ready' || confirmed?.enabled === undefined}
+            onChange={(event) => {
+              setEnabled(event.target.checked);
+              setWelcome(false);
+              setMessage('');
+            }}
+          />
+          Pantalla encendida
+        </Power>
+        <p>
+          {confirmed?.enabled === undefined
+            ? 'Elige tu diseño y guárdalo en el teclado.'
+            : 'Encendida de forma continua mientras el computador esté activo. Puedes apagarla y conservar tu diseño.'}
+        </p>
+        {confirmed && confirmed.enabled === undefined && (
+          <p>
+            Actualiza el firmware Plus para poder encender o apagar la pantalla.
+          </p>
+        )}
         <Preview>
-          <picture key={image}>
-            <source
-              media="(prefers-reduced-motion: reduce)"
-              srcSet={`${assetBase}${image}.png`}
-            />
-            <img
-              src={`${assetBase}${image}.gif`}
-              width="128"
-              height="32"
-              alt={
-                welcome
-                  ? 'Bienvenida Zelvoq'
-                  : `Vista previa de ${OLED_MODES[chosen]}`
-              }
-            />
-          </picture>
+          {!enabled ? (
+            <div className="off" role="img" aria-label="Pantalla apagada" />
+          ) : (
+            <picture key={image}>
+              <source
+                media="(prefers-reduced-motion: reduce)"
+                srcSet={`${assetBase}${image}.png`}
+              />
+              <img
+                src={`${assetBase}${image}.gif`}
+                width="128"
+                height="32"
+                alt={
+                  welcome
+                    ? 'Bienvenida Zelvoq'
+                    : `Vista previa de ${OLED_MODES[chosen]}`
+                }
+              />
+            </picture>
+          )}
         </Preview>
-        <p>Vista previa · actividad de escritura de ejemplo.</p>
+        <p>
+          {enabled
+            ? 'Vista previa · actividad de escritura de ejemplo.'
+            : 'Vista previa · pantalla apagada.'}
+        </p>
         <PreviewAction
           type="button"
           onClick={() => setWelcome(true)}
-          disabled={welcome}
+          disabled={welcome || !enabled}
         >
           Ver bienvenida
         </PreviewAction>
@@ -304,6 +366,11 @@ export function OledPanel({
         {confirmed && (
           <p>
             En el teclado: <strong>{OLED_MODES[confirmed.mode]}</strong>
+            {confirmed.enabled !== undefined &&
+              ` · ${confirmed.enabled ? 'Encendida' : 'Apagada'}`}
+            {confirmed.enabled !== confirmed.storedEnabled &&
+              confirmed.storedEnabled !== undefined &&
+              ` · Guardada: ${confirmed.storedEnabled ? 'Encendida' : 'Apagada'}`}
             {confirmed.mode !== confirmed.storedMode &&
               ` · Guardado: ${OLED_MODES[confirmed.storedMode]}`}
           </p>

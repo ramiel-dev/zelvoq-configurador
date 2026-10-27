@@ -9,6 +9,7 @@ import {
   parseOledCapabilities,
   readOledState,
   applyOledMode,
+  applyOledSettings,
   isZelvoqPlusDefinition,
 } from '../src/utils/zelvoq-oled.ts';
 
@@ -52,6 +53,202 @@ const fake = () => {
     },
   };
 };
+
+const capsV2 = (
+  mode = 0,
+  storedMode = mode,
+  enabled = 1,
+  storedEnabled = enabled,
+) => [0x70, 0x5a, 0x51, 2, 3, mode, storedMode, enabled, storedEnabled];
+const fakeV2 = () => {
+  const api = fake();
+  let mode = 0,
+    storedMode = 0,
+    enabled = 1,
+    storedEnabled = 1;
+  api.getCustomMenuValue = async (bytes, options) => {
+    api.calls.push(['get', bytes, options]);
+    if (bytes[1] === 0x70)
+      return capsV2(mode, storedMode, enabled, storedEnabled);
+    if (bytes[1] === 0x71) return [0x71, mode, storedMode];
+    if (bytes[1] === 0x72) return [0x72, enabled, storedEnabled];
+    throw new Error('Unknown command');
+  };
+  api.setCustomMenuValue = async (...bytes) => {
+    api.calls.push(['set', ...bytes]);
+    if (bytes[1] === 0x71) mode = bytes[2];
+    if (bytes[1] === 0x72) enabled = bytes[2];
+  };
+  api.commitCustomMenu = async (channel) => {
+    api.calls.push(['save', channel]);
+    storedMode = mode;
+    storedEnabled = enabled;
+  };
+  return api;
+};
+
+test('protocol v2 parses enabled and persisted enabled with strict boolean bytes', () => {
+  assert.deepEqual(parseOledCapabilities(capsV2(2, 1, 0, 1)), {
+    mode: 2,
+    storedMode: 1,
+    enabled: false,
+    storedEnabled: true,
+  });
+  assert.deepEqual(parseOledCapabilities([...capsV2(), ...Array(23).fill(0)]), {
+    mode: 0,
+    storedMode: 0,
+    enabled: true,
+    storedEnabled: true,
+  });
+  for (const result of [
+    capsV2().slice(0, 8),
+    [...capsV2(), 1],
+    [...capsV2(), ...Array(24).fill(0)],
+  ]) {
+    assert.throws(() => parseOledCapabilities(result));
+  }
+  for (const index of [7, 8])
+    for (const value of [-1, 2, 255, 0.5, NaN, undefined, '1', true]) {
+      const result = capsV2();
+      result[index] = value;
+      assert.throws(() => parseOledCapabilities(result));
+    }
+});
+
+test('v2 applies mode and enabled, saves together and verifies both active/persisted values', async () => {
+  const api = fakeV2();
+  assert.deepEqual(await applyOledSettings(api, 2, false), {
+    mode: 2,
+    storedMode: 2,
+    enabled: false,
+    storedEnabled: false,
+  });
+  assert.deepEqual(api.calls, [
+    ['get', [0, 0x70], {reportErrors: false}],
+    ['set', 0, 0x71, 2],
+    ['set', 0, 0x72, 0],
+    ['save', 0],
+    ['get', [0, 0x71], {reportErrors: false}],
+    ['get', [0, 0x72], {reportErrors: false}],
+  ]);
+  assert.deepEqual(await applyOledSettings(api, 1, true), {
+    mode: 1,
+    storedMode: 1,
+    enabled: true,
+    storedEnabled: true,
+  });
+});
+
+test('settings reject bad arguments before IO and require protocol v2 before SET', async () => {
+  for (const enabled of [0, 1, undefined, null, 'true']) {
+    const api = fakeV2();
+    await assert.rejects(applyOledSettings(api, 1, enabled), VerificationError);
+    assert.deepEqual(api.calls, []);
+  }
+  for (const mode of [3, -1, undefined, '1']) {
+    const api = fakeV2();
+    await assert.rejects(applyOledSettings(api, mode, true), VerificationError);
+    assert.deepEqual(api.calls, []);
+  }
+  const api = fake();
+  await assert.rejects(
+    applyOledSettings(api, 1, true),
+    UnsupportedFirmwareError,
+  );
+  assert.deepEqual(api.calls, [['get', [0, 0x70], {reportErrors: false}]]);
+});
+
+test('mode-only v2 apply preserves current enabled value and verifies its save', async () => {
+  const api = fakeV2();
+  await api.setCustomMenuValue(0, 0x72, 0);
+  api.calls.length = 0;
+  assert.deepEqual(await applyOledMode(api, 1), {
+    mode: 1,
+    storedMode: 1,
+    enabled: false,
+    storedEnabled: false,
+  });
+  assert.deepEqual(api.calls, [
+    ['get', [0, 0x70], {reportErrors: false}],
+    ['set', 0, 0x71, 1],
+    ['set', 0, 0x72, 0],
+    ['save', 0],
+    ['get', [0, 0x71], {reportErrors: false}],
+    ['get', [0, 0x72], {reportErrors: false}],
+  ]);
+});
+
+test('enabled readback validates ID, booleans, length, padding and persisted agreement', async () => {
+  for (const reply of [
+    [0x72, 1, 0],
+    [0x72, 0, 1],
+    [0x71, 0, 0],
+    [0x72, 0],
+    [0x72, 2, 0],
+    [0x72, 0, '0'],
+    [0x72, 0, 0, 1],
+    [0x72, 0, 0, NaN],
+  ]) {
+    const api = fakeV2();
+    const original = api.getCustomMenuValue;
+    api.getCustomMenuValue = async (bytes, options) =>
+      bytes[1] === 0x72 ? reply : original(bytes, options);
+    await assert.rejects(applyOledSettings(api, 1, false), VerificationError);
+  }
+});
+
+test('settings guard every v2 await, release shared lock and preserve transport errors', async () => {
+  for (let cancelAt = 1; cancelAt <= 6; cancelAt++) {
+    const api = fakeV2();
+    let current = true,
+      count = 0;
+    for (const name of [
+      'getCustomMenuValue',
+      'setCustomMenuValue',
+      'commitCustomMenu',
+    ]) {
+      const original = api[name];
+      api[name] = async (...args) => {
+        const value = await original(...args);
+        if (++count === cancelAt) current = false;
+        return value;
+      };
+    }
+    await assert.rejects(
+      applyOledSettings(api, 1, false, () => current, 'settings-cancel'),
+      StaleOledSessionError,
+    );
+    assert.equal(api.calls.length, cancelAt);
+    await applyOledSettings(fakeV2(), 1, true, () => true, 'settings-cancel');
+  }
+  const wait = deferred();
+  const api = fakeV2();
+  const get = api.getCustomMenuValue;
+  api.getCustomMenuValue = async (...args) => {
+    await wait.promise;
+    return get(...args);
+  };
+  const running = applyOledSettings(api, 1, false, () => true, 'settings-lock');
+  await assert.rejects(
+    applyOledMode(fakeV2(), 1, () => true, 'settings-lock'),
+    BusyOledError,
+  );
+  wait.resolve();
+  await running;
+  for (const command of [0x71, 0x72]) {
+    const next = fakeV2();
+    const set = next.setCustomMenuValue;
+    const error = new DOMException('USB disconnected', 'NetworkError');
+    next.setCustomMenuValue = async (...bytes) => {
+      if (bytes[1] === command) throw error;
+      return set(...bytes);
+    };
+    await assert.rejects(
+      applyOledSettings(next, 1, false),
+      (value) => value === error,
+    );
+  }
+});
 
 test('OLED modes and capability parsing preserve active and EEPROM state', () => {
   assert.deepEqual(OLED_MODES, ['Pulso', 'Compañero', 'Firma']);

@@ -8,6 +8,11 @@ function installOledWebHidMock() {
   const model = {
     connected: true,
     supported: true,
+    protocolVersion: 2,
+    enabled: true,
+    storedEnabled: true,
+    readbackEnabled: null,
+    readbackStoredEnabled: null,
     mode: 0,
     storedMode: 0,
     delayMs: 1,
@@ -73,15 +78,27 @@ function installOledWebHidMock() {
         if (channel === 0) {
           if (!model.supported) { unsupported(response); break; }
           if (command === 0x08 && id === 0x70) {
-            response.set([0x5a, 0x51, 1, 3, model.mode, model.storedMode], 3);
+            response.set([0x5a, 0x51, model.protocolVersion, 3, model.mode, model.storedMode], 3);
+            if (model.protocolVersion >= 2) {
+              response[9] = Number(model.enabled);
+              response[10] = Number(model.storedEnabled);
+            }
           } else if (command === 0x08 && id === 0x71) {
             response[3] = model.readbackMode ?? model.mode;
             response[4] = model.readbackStoredMode ?? model.storedMode;
+          } else if (command === 0x08 && id === 0x72 && model.protocolVersion >= 2) {
+            response[3] = Number(model.readbackEnabled ?? model.enabled);
+            response[4] = Number(model.readbackStoredEnabled ?? model.storedEnabled);
+          } else if (command === 0x07 && id === 0x72 && model.protocolVersion >= 2 && request[3] <= 1) {
+            model.enabled = request[3] === 1;
           } else if (command === 0x07 && id === 0x71 && request[3] < 3) {
             model.mode = request[3];
           } else if (command === 0x09) {
             if (model.rejectSave) unsupported(response);
-            else model.storedMode = model.mode;
+            else {
+              model.storedMode = model.mode;
+              if (model.protocolVersion >= 2) model.storedEnabled = model.enabled;
+            }
           } else unsupported(response);
         } else if (channel === 3) { // Built-in RGB Matrix, preserved channel.
           if (command === 0x09) break;

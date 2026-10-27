@@ -5,7 +5,13 @@ export const OLED_MODES = Object.freeze([
   'Firma',
 ] as const);
 export type OledMode = 0 | 1 | 2;
-export type OledState = {mode: OledMode; storedMode: OledMode};
+export type OledState = {
+  mode: OledMode;
+  storedMode: OledMode;
+  /** Absent on mode-only protocol v1 firmware. */
+  enabled?: boolean;
+  storedEnabled?: boolean;
+};
 
 export interface OledAPI {
   getCustomMenuValue(
@@ -47,6 +53,7 @@ export class VerificationError extends Error {
 const CHANNEL = 0;
 const CAPABILITIES = 0x70;
 const MODE = 0x71;
+const ENABLED = 0x72;
 const VIA_RESPONSE_MISMATCH = 'Receiving incorrect response for command';
 const activeApplications = new Map<OledAPI | string, symbol>();
 
@@ -83,21 +90,39 @@ function payloadBytes(result: unknown, minimumLength: number): number[] {
 }
 
 export function parseOledCapabilities(result: unknown): OledState {
-  const bytes = payloadBytes(result, 7);
+  // Validate all bytes before choosing the version-specific payload length.
+  const isV2 = Array.isArray(result) && result[3] === 2;
+  const bytes = payloadBytes(result, isV2 ? 9 : 7);
   if (
     bytes[0] !== CAPABILITIES ||
     bytes[1] !== 0x5a ||
     bytes[2] !== 0x51 ||
-    bytes[3] !== 1 ||
+    (bytes[3] !== 1 && bytes[3] !== 2) ||
     bytes[4] !== OLED_MODES.length
   ) {
     throw new UnsupportedFirmwareError();
   }
   const [, , , , , mode, storedMode] = bytes;
-  if (!isOledMode(mode) || !isOledMode(storedMode)) {
+  if (!isOledMode(mode) || !isOledMode(storedMode))
+    throw new VerificationError();
+  if (!isV2) return {mode, storedMode};
+  return {mode, storedMode, ...parseEnabledBytes(bytes[7], bytes[8])};
+}
+
+function parseEnabledBytes(enabled: number, storedEnabled: number) {
+  if (
+    (enabled !== 0 && enabled !== 1) ||
+    (storedEnabled !== 0 && storedEnabled !== 1)
+  ) {
     throw new VerificationError();
   }
-  return {mode, storedMode};
+  return {enabled: enabled === 1, storedEnabled: storedEnabled === 1};
+}
+
+function parseOledEnabled(result: unknown) {
+  const [id, enabled, storedEnabled] = payloadBytes(result, 3);
+  if (id !== ENABLED) throw new VerificationError();
+  return parseEnabledBytes(enabled, storedEnabled);
 }
 
 function parseOledMode(result: unknown): OledState {
@@ -129,16 +154,42 @@ export async function readOledState(api: OledAPI): Promise<OledState> {
   return parseOledCapabilities(result);
 }
 
-/** No rollback: a rejected USB operation may already have reached the device. */
-export async function applyOledMode(
+/** Change only the mode; v2 keeps the live enabled setting and saves both. */
+export function applyOledMode(
   api: OledAPI,
   mode: OledMode,
   isCurrent: () => boolean = () => true,
   sessionKey?: string,
 ): Promise<OledState> {
-  if (!isOledMode(mode)) {
-    throw new VerificationError('Elige un modo OLED válido.');
+  return applySettings(api, mode, undefined, isCurrent, sessionKey);
+}
+
+/** Apply and verify mode plus explicit display power preference (protocol v2). */
+export async function applyOledSettings(
+  api: OledAPI,
+  mode: OledMode,
+  enabled: boolean,
+  isCurrent: () => boolean = () => true,
+  sessionKey?: string,
+): Promise<OledState> {
+  if (typeof enabled !== 'boolean') {
+    throw new VerificationError(
+      'Elige si la pantalla está encendida o apagada.',
+    );
   }
+  return applySettings(api, mode, enabled, isCurrent, sessionKey);
+}
+
+/** No rollback: a rejected USB operation may already have reached the device. */
+async function applySettings(
+  api: OledAPI,
+  mode: OledMode,
+  enabled: boolean | undefined,
+  isCurrent: () => boolean,
+  sessionKey?: string,
+): Promise<OledState> {
+  if (!isOledMode(mode))
+    throw new VerificationError('Elige un modo OLED válido.');
   const ensureCurrent = () => {
     if (!isCurrent()) throw new StaleOledSessionError();
   };
@@ -156,8 +207,17 @@ export async function applyOledMode(
   const token = Symbol('OLED application');
   activeApplications.set(key, token);
   try {
-    await checked(() => readOledState(api));
+    const capabilities = await checked(() => readOledState(api));
+    if (enabled !== undefined && capabilities.enabled === undefined) {
+      throw new UnsupportedFirmwareError();
+    }
+    const chosenEnabled = enabled ?? capabilities.enabled;
     await checked(() => api.setCustomMenuValue(CHANNEL, MODE, mode));
+    if (chosenEnabled !== undefined) {
+      await checked(() =>
+        api.setCustomMenuValue(CHANNEL, ENABLED, Number(chosenEnabled)),
+      );
+    }
     await checked(() => api.commitCustomMenu(CHANNEL));
     const result = await checked(() =>
       api.getCustomMenuValue([CHANNEL, MODE], {reportErrors: false}),
@@ -168,7 +228,21 @@ export async function applyOledMode(
         'No se confirmó el modo activo y guardado. Vuelve a leer el teclado.',
       );
     }
-    return state;
+    if (chosenEnabled === undefined) return state;
+    const power = parseOledEnabled(
+      await checked(() =>
+        api.getCustomMenuValue([CHANNEL, ENABLED], {reportErrors: false}),
+      ),
+    );
+    if (
+      power.enabled !== chosenEnabled ||
+      power.storedEnabled !== chosenEnabled
+    ) {
+      throw new VerificationError(
+        'No se confirmó el encendido activo y guardado. Vuelve a leer el teclado.',
+      );
+    }
+    return {...state, ...power};
   } finally {
     if (activeApplications.get(key) === token) activeApplications.delete(key);
   }
