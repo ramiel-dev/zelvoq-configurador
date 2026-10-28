@@ -46,6 +46,12 @@ class FakeHidDevice extends EventTarget {
 
 async function connect(device) {
   globalThis.self = globalThis;
+  if (!globalThis.navigator) {
+    Object.defineProperty(globalThis, 'navigator', {
+      configurable: true,
+      value: {},
+    });
+  }
   Object.defineProperty(globalThis.navigator, 'hid', {
     configurable: true,
     value: {
