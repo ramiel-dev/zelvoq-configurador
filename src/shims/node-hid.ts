@@ -10,11 +10,19 @@ const globalBuffer: {
   [path: string]: {currTime: number; message: Uint8Array}[];
 } = {};
 const eventWaitBuffer: {
-  [path: string]: ((a: Uint8Array) => void)[];
+  [path: string]: ((error?: Error, message?: Uint8Array) => void)[];
 } = {};
 type InputReportHandler = (message: Uint8Array) => boolean;
 const inputReportHandlers: {
   [path: string]: InputReportHandler[];
+} = {};
+const inputReportSubscriptions: {
+  [path: string]:
+    | {
+        device: HIDDevice;
+        listener: (event: HIDInputReportEvent) => void;
+      }
+    | undefined;
 } = {};
 const filterHIDDevices = (devices: HIDDevice[]) =>
   devices.filter((device) =>
@@ -127,6 +135,7 @@ const ExtendedHID = {
         globalBuffer[this.path] = globalBuffer[this.path] || [];
         eventWaitBuffer[this.path] = eventWaitBuffer[this.path] || [];
         inputReportHandlers[this.path] = inputReportHandlers[this.path] || [];
+        this.setupListeners();
         if (!this._hidDevice._device.opened) {
           this.open();
         }
@@ -142,30 +151,37 @@ const ExtendedHID = {
       }
       return Promise.resolve();
     }
-    // Should we unsubscribe at some point of time
+    // Several wrappers can share a path. Reopening must not install another
+    // listener: one duplicated report can become the next command's response.
     setupListeners() {
-      if (this._hidDevice) {
-        this._hidDevice._device.addEventListener('inputreport', (e) => {
-          const message = new Uint8Array(e.data.buffer);
-          const wasHandled = inputReportHandlers[this.path].some((handler) =>
-            handler(message),
-          );
-          if (wasHandled) {
-            return;
-          }
-          if (eventWaitBuffer[this.path].length !== 0) {
-            // It should be impossible to have a handler in the buffer
-            // that has a ts that happened after the current message
-            // came in
-            (eventWaitBuffer[this.path].shift() as any)(message);
-          } else {
-            globalBuffer[this.path].push({
-              currTime: Date.now(),
-              message,
-            });
-          }
-        });
+      const device = this._hidDevice?._device;
+      if (!device) return;
+      const path = this.path;
+      const previous = inputReportSubscriptions[path];
+      if (previous?.device === device) return;
+      if (previous) {
+        previous.device.removeEventListener('inputreport', previous.listener);
+        // Reports and waiters belong to the old physical identity, even when
+        // a replacement is assigned the same path during a connection refresh.
+        globalBuffer[path] = [];
+        const pending = eventWaitBuffer[path].splice(0);
+        for (const reject of pending) reject(new Error('HID device changed'));
       }
+      const listener = (e: HIDInputReportEvent) => {
+        const message = new Uint8Array(e.data.buffer);
+        const wasHandled = inputReportHandlers[path].some((handler) =>
+          handler(message),
+        );
+        if (wasHandled) return;
+        const waiting = eventWaitBuffer[path].shift();
+        if (waiting) {
+          waiting(undefined, message);
+        } else {
+          globalBuffer[path].push({currTime: Date.now(), message});
+        }
+      };
+      device.addEventListener('inputreport', listener);
+      inputReportSubscriptions[path] = {device, listener};
     }
 
     addInputReportHandler(handler: InputReportHandler) {
@@ -184,7 +200,9 @@ const ExtendedHID = {
         // this should be a noop normally
         fn(undefined, globalBuffer[this.path].shift()?.message as any);
       } else {
-        eventWaitBuffer[this.path].push((data) => fn(undefined, data));
+        eventWaitBuffer[this.path].push((error, data) =>
+          fn(error, data as any),
+        );
       }
     }
 
