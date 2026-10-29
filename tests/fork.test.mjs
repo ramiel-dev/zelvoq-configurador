@@ -289,3 +289,28 @@ test('public configurator excludes definition editing and ignores previously sto
     assert.ok(plus.layouts.keys.length > 61);
   }
 });
+
+test('Plus exposes only its 40 compiled RGB effects with explicit VIA channel IDs', async () => {
+  const {isKeyboardDefinitionV3, keyboardDefinitionV3ToVIADefinitionV3} =
+    await import('@the-via/reader');
+  const source = JSON.parse(await readFile('zelvoq/definitions/zelvoq60plus.json', 'utf8'));
+  assert.equal(isKeyboardDefinitionV3(source), true);
+  assert.deepEqual(source.keycodes, ['qmk_rgb_matrix_keycodes']);
+  const menu = source.menus[0];
+  assert.equal(typeof menu, 'object', 'Plus must not use the generic built-in RGB effect list');
+  const controls = menu.content[0].content;
+  assert.deepEqual(controls.map(control => control.content.slice(1)), [[3,1],[3,2],[3,3],[3,4]]);
+  const options = controls[1].options;
+  assert.equal(options.length, 41);
+  assert.deepEqual(options.map(([, id]) => id), Array.from({length:41}, (_, id) => id));
+  assert.equal(new Set(options.map(([name]) => name)).size, 41);
+  assert.ok(options.every(([name]) => typeof name === 'string' && name.trim().length > 0));
+  assert.deepEqual(controls[0].options, [0, 255]);
+  const transformed = keyboardDefinitionV3ToVIADefinitionV3(source);
+  assert.deepEqual(transformed.menus, source.menus, 'Reader must preserve labels and exact effect IDs');
+  if (process.env.TEST_DIST === '1') {
+    const built = JSON.parse(await readFile('dist/definitions/v3/302579715.json', 'utf8'));
+    assert.deepEqual(built.menus, transformed.menus);
+    assert.deepEqual(built.keycodes, transformed.keycodes);
+  }
+});

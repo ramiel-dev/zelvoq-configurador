@@ -2,10 +2,231 @@
   "name": "Zelvoq 60 Plus",
   "vendorId": "0x1209",
   "keycodes": [
-    "qmk_lighting"
+    "qmk_rgb_matrix_keycodes"
   ],
   "menus": [
-    "qmk_rgb_matrix"
+    {
+      "label": "Iluminación",
+      "content": [
+        {
+          "label": "RGB",
+          "content": [
+            {
+              "label": "Brillo",
+              "type": "range",
+              "options": [
+                0,
+                255
+              ],
+              "content": [
+                "id_qmk_rgb_matrix_brightness",
+                3,
+                1
+              ]
+            },
+            {
+              "label": "Efecto",
+              "type": "dropdown",
+              "content": [
+                "id_qmk_rgb_matrix_effect",
+                3,
+                2
+              ],
+              "options": [
+                [
+                  "Apagado",
+                  0
+                ],
+                [
+                  "Color fijo",
+                  1
+                ],
+                [
+                  "Gradiente vertical",
+                  2
+                ],
+                [
+                  "Gradiente horizontal",
+                  3
+                ],
+                [
+                  "Respiración",
+                  4
+                ],
+                [
+                  "Banda de saturación",
+                  5
+                ],
+                [
+                  "Banda de brillo",
+                  6
+                ],
+                [
+                  "Molinillo de saturación",
+                  7
+                ],
+                [
+                  "Molinillo de brillo",
+                  8
+                ],
+                [
+                  "Espiral de saturación",
+                  9
+                ],
+                [
+                  "Espiral de brillo",
+                  10
+                ],
+                [
+                  "Ciclo de color",
+                  11
+                ],
+                [
+                  "Ciclo horizontal",
+                  12
+                ],
+                [
+                  "Ciclo vertical",
+                  13
+                ],
+                [
+                  "Arcoíris en chevrón",
+                  14
+                ],
+                [
+                  "Ciclo hacia el centro",
+                  15
+                ],
+                [
+                  "Ciclo hacia el centro doble",
+                  16
+                ],
+                [
+                  "Ciclo en molinillo",
+                  17
+                ],
+                [
+                  "Ciclo en espiral",
+                  18
+                ],
+                [
+                  "Baliza doble",
+                  19
+                ],
+                [
+                  "Baliza arcoíris",
+                  20
+                ],
+                [
+                  "Molinillos arcoíris",
+                  21
+                ],
+                [
+                  "Flor de colores",
+                  22
+                ],
+                [
+                  "Respiración de tono",
+                  23
+                ],
+                [
+                  "Péndulo de tono",
+                  24
+                ],
+                [
+                  "Onda de tono",
+                  25
+                ],
+                [
+                  "Mapa de calor",
+                  26
+                ],
+                [
+                  "Reactivo simple",
+                  27
+                ],
+                [
+                  "Reactivo de color",
+                  28
+                ],
+                [
+                  "Reactivo amplio",
+                  29
+                ],
+                [
+                  "Reactivo amplio múltiple",
+                  30
+                ],
+                [
+                  "Reactivo en cruz",
+                  31
+                ],
+                [
+                  "Reactivo en cruz múltiple",
+                  32
+                ],
+                [
+                  "Reactivo radial",
+                  33
+                ],
+                [
+                  "Reactivo radial múltiple",
+                  34
+                ],
+                [
+                  "Ondas al pulsar",
+                  35
+                ],
+                [
+                  "Ondas múltiples",
+                  36
+                ],
+                [
+                  "Ondas de color fijo",
+                  37
+                ],
+                [
+                  "Ondas múltiples de color fijo",
+                  38
+                ],
+                [
+                  "Estrellas suaves",
+                  39
+                ],
+                [
+                  "Río de colores",
+                  40
+                ]
+              ]
+            },
+            {
+              "label": "Velocidad",
+              "type": "range",
+              "options": [
+                0,
+                255
+              ],
+              "showIf": "{id_qmk_rgb_matrix_effect} != 0",
+              "content": [
+                "id_qmk_rgb_matrix_effect_speed",
+                3,
+                3
+              ]
+            },
+            {
+              "label": "Color",
+              "type": "color",
+              "showIf": "{id_qmk_rgb_matrix_effect} != 0",
+              "content": [
+                "id_qmk_rgb_matrix_color",
+                3,
+                4
+              ]
+            }
+          ]
+        }
+      ]
+    }
   ],
   "customKeycodes": [
     {
