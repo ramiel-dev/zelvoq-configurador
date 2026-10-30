@@ -303,3 +303,96 @@ export async function runOledBrowserChecks(
   results.push('Reduced motion uses static preview');
   return results;
 }
+
+/** Split controls must probe old firmware and apply one setting to the pair. */
+export async function runSplitOledBrowserChecks(page, base = 'http://127.0.0.1:4177') {
+  const results = [];
+  const check = (value, message) => { if (!value) throw Error(message); };
+  for (const model of ['corne', 'sofle', 'lily58']) {
+    await page.goto(`${base}/configurador/tests/oled-harness.html?fresh=1&model=${model}`);
+    await page.getByText('En el teclado:').waitFor();
+    const power = page.getByRole('checkbox', {name: 'Pantallas encendidas', exact: true});
+    const apply = page.getByRole('button', {name: 'Aplicar y guardar'});
+    check(await power.isChecked(), `${model}: expected power on`);
+    const primaryLabel = model === 'corne' ? 'Capa y WPM · USB' : 'Mitad con USB';
+    const secondaryLabel = model === 'corne' ? 'Modelo + animación' : 'Otra mitad';
+    check(await page.getByText(primaryLabel, {exact:true}).isVisible(), `${model}: primary missing`);
+    check(await page.getByText(secondaryLabel, {exact:true}).isVisible(), `${model}: secondary missing`);
+    await page.waitForFunction(() => [...document.querySelectorAll('img')].every(i => i.complete && i.naturalWidth > 0));
+    const baseline = await page.evaluate(() => window.oledHarness.calls.length);
+    await page.getByRole('button', {name: /^Compañero/}).click();
+    check((await page.evaluate(() => window.oledHarness.calls.length)) === baseline, `${model}: preview wrote HID`);
+    await power.uncheck();
+    check(await page.getByRole('img', {name: `${primaryLabel} apagada`, exact: true}).isVisible(), `${model}: primary off preview missing`);
+    check(await page.getByRole('img', {name: `${secondaryLabel} apagada`, exact: true}).isVisible(), `${model}: secondary off preview missing`);
+    await apply.click();
+    await page.getByText('Pantallas apagadas y guardadas en el teclado.', {exact:true}).waitFor();
+    check((await page.evaluate(() => window.oledHarness.state())).storedEnabled === false, `${model}: power not saved`);
+    await page.reload();
+    await page.getByText('En el teclado:').waitFor();
+    check(!(await power.isChecked()), `${model}: power lost on reload`);
+    await power.check();
+    await page.getByRole('button', {name: /^Firma/}).click();
+    await apply.click();
+    await page.getByText('Firma guardado en el teclado.', {exact:true}).waitFor();
+    await page.evaluate(() => window.oledHarness.behavior('unsupported'));
+    await page.getByRole('button', {name:'Releer teclado'}).click();
+    await page.getByText(/El firmware no admite/).waitFor();
+    const reads = await page.evaluate(() => window.oledHarness.calls.length);
+    await page.getByRole('button', {name: /^Pulso/}).click();
+    check(await apply.isDisabled(), `${model}: unsupported apply enabled`);
+    check(await power.isDisabled(), `${model}: unsupported power enabled`);
+    check((await page.evaluate(() => window.oledHarness.calls.length)) === reads, `${model}: unsupported preview wrote`);
+    for (const width of [320, 1280]) {
+      await page.setViewportSize({width, height:1000});
+      check(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth), `${model}: overflow ${width}`);
+    }
+    await page.emulateMedia({reducedMotion:'reduce'});
+    await page.waitForFunction(() => [...document.querySelectorAll('picture img')].every(i => i.currentSrc.endsWith('.png')));
+    await page.emulateMedia({reducedMotion:'no-preference'});
+    results.push(`${model}: both screens preview locally; power/mode persist; old firmware read-only; mobile/desktop/reduced motion fit`);
+  }
+  return results;
+}
+
+/** Exercise actual app menus/KeyboardAPI with the isolated WebHID fixture. */
+export async function runSplitLightingBrowserChecks(page, fixtureSource, base = 'http://127.0.0.1:4177') {
+  const results = [];
+  const check = (value, message) => { if (!value) throw Error(message); };
+  for (const model of ['corne','sofle','lily58']) {
+    for (const legacy of [false,true]) {
+      const isolated = await page.context().newPage();
+      try {
+        const fixture = {model, supported: !legacy};
+        await isolated.addInitScript({content: `window.__oledFixture=${JSON.stringify(fixture)};\n${fixtureSource}`});
+        await isolated.goto(`${base}/configurador/`);
+        await isolated.locator('svg[data-icon="lightbulb"]').waitFor();
+        await isolated.locator('svg[data-icon="lightbulb"]').click();
+        await isolated.getByRole('combobox').waitFor();
+        await isolated.getByRole('combobox').click();
+        const labels = await isolated.getByRole('option').allTextContents();
+        if (legacy) {
+          check(labels.some(label => model === 'corne' ? label === 'Typing Heatmap' : label === 'Snake 1'), `${model}: old firmware menu changed`);
+          check(await isolated.evaluate(() => window.__oledHidMock.calls.every(c => c[0] !== 7 && c[0] !== 9)), `${model}: probe wrote HID`);
+        } else {
+          const expected = model === 'corne' ? 8 : model === 'sofle' ? 27 : 25;
+          check(labels.length === expected, `${model}: ${labels.length} effects instead of ${expected}`);
+          check(!labels.some(label=>/Heatmap|Snake|Knight|Christmas|Twinkle/.test(label)), `${model}: unavailable effect offered`);
+          const target = model === 'corne' ? 'Solid Reactive Simple' : 'Gradient 1';
+          const value = model === 'corne' ? 6 : 15;
+          await isolated.getByRole('option',{name:target,exact:true}).click();
+          await isolated.waitForFunction(expected => window.__oledHidMock.model.rgbEffect === expected, value);
+          check(await isolated.evaluate(({value,channel}) => window.__oledHidMock.calls.some(c=>c[0]===7 && c[1]===channel && c[2]===2 && c[3]===value), {value,channel:model === 'corne' ? 3 : 2}), `${model}: effect did not use compiled enum`);
+          if (model === 'sofle') {
+            await isolated.getByRole('combobox').click();
+            await isolated.getByRole('option',{name:'RGB Test',exact:true}).click();
+            await isolated.waitForFunction(()=>window.__oledHidMock.model.rgbEffect===25);
+            check(await isolated.getByText('Color',{exact:true}).count() === 0, 'Sofle: test mode color control still visible');
+          }
+        }
+        results.push(`${model} ${legacy ? 'legacy' : 'OLED v2'}: ${labels.length} correctly gated effects; HID enum values verified`);
+      } finally { await isolated.close(); }
+    }
+  }
+  return results;
+}

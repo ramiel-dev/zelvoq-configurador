@@ -35,6 +35,13 @@ import {
 } from './devicesSlice';
 import type {AppThunk, RootState} from './index';
 import {getSelectedFirmwareVersion} from './firmwareSlice';
+import {extractDeviceInfo, logAppError} from './errorsSlice';
+import {
+  readSplitLightingProfile,
+  withSplitLightingMenus,
+} from 'src/utils/zelvoq-split-lighting';
+import type {SplitLightingProfile} from 'src/utils/zelvoq-split-lighting';
+import {getZelvoqOledModel} from 'src/utils/zelvoq-oled';
 
 type CustomMenuData = {
   [commandName: string]: number[] | number[][];
@@ -45,6 +52,10 @@ type MenusState = {
   customMenuDataMap: CustomMenuDataMap;
   commonMenusMap: CommonMenusMap;
   showKeyPainter: boolean;
+  splitLightingProfiles: Record<
+    string,
+    SplitLightingProfile | 'checking' | 'error' | null
+  >;
 };
 
 type PendingCustomMenuSync = {
@@ -53,18 +64,33 @@ type PendingCustomMenuSync = {
   ids: Set<string>;
 };
 
+const splitLightingProbeTokens = new Map<string, symbol>();
+
 const pendingCustomMenuSyncs: Record<string, PendingCustomMenuSync> = {};
 
 const initialState: MenusState = {
   customMenuDataMap: {},
   commonMenusMap: {},
   showKeyPainter: false,
+  splitLightingProfiles: {},
 };
 
 const menusSlice = createSlice({
   name: 'menus',
   initialState,
   reducers: {
+    updateSplitLightingProfile: (
+      state,
+      action: PayloadAction<{
+        path: string;
+        profile: SplitLightingProfile | 'checking' | 'error' | null;
+      }>,
+    ) => {
+      state.splitLightingProfiles = {
+        ...state.splitLightingProfiles,
+        [action.payload.path]: action.payload.profile,
+      };
+    },
     updateShowKeyPainter: (state, action: PayloadAction<boolean>) => {
       state.showKeyPainter = action.payload;
     },
@@ -90,6 +116,7 @@ const menusSlice = createSlice({
 
 export const {
   updateShowKeyPainter,
+  updateSplitLightingProfile,
   updateSelectedCustomMenuData,
   updateCustomMenuData,
 } = menusSlice.actions;
@@ -357,7 +384,48 @@ export const updateV3MenuData =
     if (!isVIADefinitionV3(definition)) {
       throw new Error('V3 menus are only compatible with V3 VIA definitions.');
     }
-    const menus = getV3Menus(state);
+    if (getSelectedDevicePath(state) !== connectedDevice.path) return;
+    const model = getZelvoqOledModel(definition, connectedDevice);
+    if (model && model !== 'plus') {
+      const identity = getSelectedConnectedDevice(state);
+      const ticket = Symbol('split lighting probe');
+      splitLightingProbeTokens.set(connectedDevice.path, ticket);
+      const isCurrent = () =>
+        getSelectedConnectedDevice(getState()) === identity &&
+        splitLightingProbeTokens.get(connectedDevice.path) === ticket;
+      dispatch(
+        updateSplitLightingProfile({
+          path: connectedDevice.path,
+          profile: 'checking',
+        }),
+      );
+      try {
+        const profile = await readSplitLightingProfile(
+          api,
+          definition,
+          connectedDevice,
+        );
+        if (!isCurrent()) return;
+        dispatch(
+          updateSplitLightingProfile({path: connectedDevice.path, profile}),
+        );
+      } catch (error) {
+        if (!isCurrent()) return;
+        dispatch(
+          updateSplitLightingProfile({
+            path: connectedDevice.path,
+            profile: 'error',
+          }),
+        );
+        dispatch(
+          logAppError({
+            message: `No se pudo leer la iluminación. Reconecta el teclado para reintentar. ${error instanceof Error ? error.message : ''}`,
+            deviceInfo: extractDeviceInfo(connectedDevice),
+          }),
+        );
+      }
+    }
+    const menus = getV3Menus(getState());
     const firmwareVersion = getSelectedFirmwareVersion(state);
     const commands = menus.flatMap((menu) =>
       extractCommands(menu, firmwareVersion),
@@ -468,38 +536,47 @@ export const getSelectedCustomMenuData = createSelector(
   (map, path) => path && map[path],
 );
 
+export const getSelectedSplitLightingProfile = (state: RootState) => {
+  const path = getSelectedDevicePath(state);
+  const model = getZelvoqOledModel(
+    getSelectedDefinition(state),
+    getSelectedConnectedDevice(state),
+  );
+  if (!path || !model || model === 'plus') return null;
+  const profile = state.menus.splitLightingProfiles[path];
+  return profile === 'checking' || profile === 'error' || profile === model
+    ? profile
+    : null;
+};
+
 export const getV3Menus = createSelector(
   getSelectedDefinition,
-  (definition) => {
+  getSelectedSplitLightingProfile,
+  (definition, profile) => {
     if (!definition || !isVIADefinitionV3(definition)) {
       return [];
     }
 
-    // TODO: handle Common menus (built ins in here too?)
-    return (definition.menus || [])
-      .flatMap(tryResolveCommonMenu)
-      .map((menu, idx) =>
-        isVIAMenu(menu) ? compileMenu('custom_menu', 3, menu, idx) : menu,
-      );
+    const blocked = profile === 'checking' || profile === 'error';
+    const menus = (definition.menus || []).filter(
+      (menu) =>
+        !blocked || (menu !== 'qmk_rgblight' && menu !== 'qmk_rgb_matrix'),
+    );
+    return withSplitLightingMenus(
+      menus.flatMap(tryResolveCommonMenu),
+      blocked ? null : (profile ?? null),
+    ).map((menu, idx) =>
+      isVIAMenu(menu) ? compileMenu('custom_menu', 3, menu, idx) : menu,
+    );
   },
 );
 
 export const getV3MenuComponents = createSelector(
-  getSelectedDefinition,
-  (definition) => {
-    if (!definition || !isVIADefinitionV3(definition)) {
-      return [];
-    }
-
-    // TODO: handle Common menus (built ins in here too?)
-    return (definition.menus || [])
-      .flatMap(tryResolveCommonMenu)
-      .map((menu: any, idx) =>
-        isVIAMenu(menu)
-          ? makeCustomMenu(compileMenu('custom_menu', 3, menu, idx), idx)
-          : menu,
-      ) as ReturnType<typeof makeCustomMenus>;
-  },
+  getV3Menus,
+  (menus) =>
+    menus.map((menu: any, idx: number) =>
+      isVIAMenu(menu) ? makeCustomMenu(menu, idx) : menu,
+    ) as ReturnType<typeof makeCustomMenus>,
 );
 
 export const getCustomCommands = createSelector(

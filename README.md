@@ -57,25 +57,47 @@ y abrir http://localhost:5173/configurador/.
 Si el teclado no aparece o algo no responde, escribenos a
 [zelvoq.cl](https://zelvoq.cl). Incluye el modelo y el navegador que usas.
 
-## Pantalla OLED de la Plus
+## Pantallas OLED
 
 La sección **Pantalla** permite elegir Pulso, Compañero o Firma, previsualizar
 la bienvenida y pulsar **Aplicar y guardar**. La app confirma el modo activo
 y el leído de EEPROM. Las vistas previas son locales, con actividad de ejemplo.
 
-Requiere firmware Plus con protocolo OLED v1. La app lo comprueba antes de
-escribir; un firmware anterior mantiene las vistas previas pero pide actualizar
-para habilitar Aplicar. No hace falta remapear una tecla ni resetear VIA.
+Compatible con Zelvoq 60 Plus y los Corne, Sofle v1 y Lily58 cableados con
+firmware OLED Zelvoq. En los splits, la mitad conectada por USB muestra capa,
+velocidad y modificadores; la otra muestra Pulso, Compañero o la firma de marca.
+En Corne, esa segunda pantalla se divide en dos áreas de 64×32: modelo y
+Pulso, la misma mascota del Zelvoq Plus o Firma. Con USB en la izquierda,
+capa/WPM quedan a la izquierda y modelo/diseño a la derecha. Al cambiar el
+USB de lado, los roles siguen la conexión. El interruptor **Pantallas
+encendidas** controla las dos juntas. Se eligen diseños incluidos; no hay
+editor ni carga de imágenes propias.
+
+La app comprueba el protocolo antes de escribir. Un firmware anterior mantiene
+las vistas previas y pide actualizar para habilitar Aplicar. El protocolo v2
+permite guardar modo y encendido; v1 conserva el control de modo. No hace falta
+remapear una tecla ni resetear VIA.
 
 Se reutiliza la conexión VIA y su cola: canal custom0, GETcap70, GET/SETmode71
-y SAVE. No se escriben RGB, keymaps o macros. Los errores/desconexiones no
+GET/SETpower72 y SAVE. Los controles de pantalla no escriben RGB, keymaps o macros.
+
+En estos tres splits, la firma OLED habilita un catálogo RGB compatible: Corne expone los siete efectos compartidos por sus builds OLED; Sofle conserva respiración, arcoíris,
+gradientes, prueba RGB y alternancia; Lily58 conserva respiración, arcoíris y
+gradientes. La lista cambia solo tras validar la firma OLED v2; el firmware
+anterior sin esa firma conserva sus menús. Algunos Corne OLED v2 anteriores
+incluyen además Multi Nexus/Splash/Solid Splash: el menú usa el subconjunto
+común de siete, cuyos IDs no cambiaron. Un error de lectura oculta únicamente el menú RGB
+hasta reconectar y permite seguir configurando las otras funciones. Los errores/desconexiones no
 se presentan como guardado correcto, y cambiar de dispositivo cancela las
 operaciones pendientes de esa selección.
 
 Pruebas: `npm test` incluye protocolo y carreras de sesión. Para probar el
 componente en navegador aislado, levantar Vite y ejecutar
-`runOledBrowserChecks(page)` de `tests/oled.browser.mjs` con una página de
-Playwright. `tests/oled-harness.html` simula la API; `oled-webhid-mock.js` se
+`runOledBrowserChecks(page)` y `runSplitOledBrowserChecks(page)` de
+`tests/oled.browser.mjs` con una página de
+Playwright. `runSplitLightingBrowserChecks(page, fixtureSource)` comprueba los
+menús RGB de los tres modelos y sus versiones anteriores en la app completa.
+`tests/oled-harness.html` simula la API; `oled-webhid-mock.js` se
 inyecta con `page.addInitScript` para comprobar la app completa y KeyboardAPI
 contra reportes HID de32bytes. Estos fixtures no se incluyen en dist ni acceden
 al dispositivo real. La carga del nuevo firmware y su persistencia física

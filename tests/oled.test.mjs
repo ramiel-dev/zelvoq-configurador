@@ -11,6 +11,7 @@ import {
   applyOledMode,
   applyOledSettings,
   isZelvoqPlusDefinition,
+  getZelvoqOledModel,
 } from '../src/utils/zelvoq-oled.ts';
 
 const caps = (mode = 0, storedMode = mode) => [
@@ -550,4 +551,84 @@ test('SET/SAVE/readback errors stay errors and never invent a successful save', 
     }
     await assert.rejects(applyOledMode(api, 1), (value) => value === error);
   }
+});
+
+
+test('OLED model gate admits the three exact split definitions with their matching physical IDs', () => {
+  const cases = [
+    ['Corne (Zelvoq)', 0x4653, 1, 'corne'],
+    ['Lily58 (Zelvoq)', 0x04d8, 0xeb2d, 'lily58'],
+    ['Sofle', 0xfc32, 0x0287, 'sofle'],
+    ['Sofle v1', 0xfc32, 0x0287, 'sofle'],
+    ['Zelvoq 60 Plus', 0x1209, 3, 'plus'],
+  ];
+  for (const [name, vendorId, productId, model] of cases) {
+    const vendorProductId = vendorId * 65536 + productId;
+    const device = {vendorId, productId};
+    assert.equal(getZelvoqOledModel({name, vendorProductId}, device), model);
+    assert.equal(getZelvoqOledModel({name}, device), model);
+    assert.equal(getZelvoqOledModel({name, vendorProductId: vendorProductId + 1}, device), null);
+    assert.equal(getZelvoqOledModel({name}, {...device, productId: productId + 1}), null);
+    assert.equal(getZelvoqOledModel({name: name + ' fake'}, device), null);
+  }
+  for (const name of ['Corne', 'Sofle v2 RGB', 'Lily58', 'Zelvoq 60 RGB']) {
+    assert.equal(getZelvoqOledModel({name}, {vendorId: 0xfc32, productId: 0x0287}), null);
+  }
+  assert.equal(getZelvoqOledModel(null, {vendorId: 0x4653, productId: 1}), null);
+  assert.equal(getZelvoqOledModel({name:'Corne (Zelvoq)'}, null), null);
+});
+
+test('split preview uses both actual model screens and preserves the Plus preview', async () => {
+  const React = await import('react');
+  const {renderToStaticMarkup} = await import('react-dom/server');
+  const {OledDesignPreview} = await import('../src/components/panes/configure-panes/oled-design-preview.tsx');
+  for (const model of ['corne', 'sofle', 'lily58']) {
+    for (const [mode, file] of ['pulso', 'companion', 'signature'].entries()) {
+      const markup = renderToStaticMarkup(React.createElement(OledDesignPreview, {
+        model, mode, enabled: true, welcome: false, assetBase: '/configurador/oled/',
+      }));
+      assert.ok(markup.includes(`/split/${model}/primary-${file}.png`), markup);
+      assert.ok(markup.includes(`/split/${model}/secondary-${file}.gif`), markup);
+      assert.ok(markup.includes(model === 'corne' ? 'Capa y WPM · USB' : 'Mitad con USB'), markup);
+      assert.ok(markup.includes(model === 'corne' ? 'Modelo + animación' : 'Otra mitad'), markup);
+      assert.ok(!markup.includes('60+'), markup);
+    }
+    const off = renderToStaticMarkup(React.createElement(OledDesignPreview, {
+      model, mode: 0, enabled: false, welcome: false, assetBase: '/configurador/oled/',
+    }));
+    assert.equal((off.match(/apagada/g) || []).length, 2);
+    assert.equal((off.match(/<img/g) || []).length, 0);
+  }
+  const plus = renderToStaticMarkup(React.createElement(OledDesignPreview, {
+    model: 'plus', mode: 2, enabled: true, welcome: false, assetBase: '/configurador/oled/',
+  }));
+  assert.ok(plus.includes('/oled/signature.gif'), plus);
+  assert.ok(!plus.includes('Mitad con USB'), plus);
+});
+
+import React from 'react';
+import {renderToStaticMarkup} from 'react-dom/server';
+import {OledDesignPreview} from '../src/components/panes/configure-panes/oled-design-preview.tsx';
+
+test('Corne preview identifies status on USB half and model/animation on the other', () => {
+  const html=renderToStaticMarkup(React.createElement(OledDesignPreview,{assetBase:'/oled/',model:'corne',mode:1,enabled:true,welcome:false}));
+  assert.match(html,/Modelo \+ animación/);
+  assert.match(html,/Capa y WPM · USB/);
+  assert.match(html,/split\/corne\/primary-companion\.gif/);
+  assert.match(html,/split\/corne\/secondary-companion\.gif/);
+});
+
+test('Other split previews retain their existing orientation', () => {
+  for(const model of ['sofle','lily58']) {
+    const html=renderToStaticMarkup(React.createElement(OledDesignPreview,{assetBase:'/oled/',model,mode:0,enabled:true,welcome:false}));
+    assert.match(html,/Mitad con USB/);
+    assert.match(html,/Otra mitad/);
+    assert.doesNotMatch(html,/Modelo \+ animación/);
+  }
+});
+
+test('Corne power off preview never offers a lit animation', () => {
+  const html=renderToStaticMarkup(React.createElement(OledDesignPreview,{assetBase:'/oled/',model:'corne',mode:1,enabled:false,welcome:false}));
+  assert.match(html,/Modelo \+ animación apagada/);
+  assert.doesNotMatch(html,/<img/);
 });

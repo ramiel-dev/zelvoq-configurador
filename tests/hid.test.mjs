@@ -123,17 +123,37 @@ test('replacement identity removes the old device listener and rejects pending o
 });
 
 test('replacement identity clears buffered old-device replies and keeps paths separate', async () => {
-  const oldDevice = new FakeHidDevice('hid-buffered');
-  await connect(oldDevice);
-  oldDevice.input([8, 0, 0x71]);
-  const currentDevice = new FakeHidDevice('hid-buffered', true);
-  const current = await connect(currentDevice);
-  const otherDevice = new FakeHidDevice('hid-other');
-  const other = await connect(otherDevice);
-  await current.write([0, 8, 0, 0x72]);
-  await other.write([0, 8, 0, 0x70]);
-  assert.equal((await current.readP())[2], 0x72);
-  assert.equal((await other.readP())[2], 0x70);
+  const previousClock = Date.now;
+  let time = 1000;
+  Date.now = () => time;
+  try {
+    const oldDevice = new FakeHidDevice('hid-buffered');
+    await connect(oldDevice);
+    oldDevice.input([8, 0, 0x71]);
+    const currentDevice = new FakeHidDevice('hid-buffered', true);
+    const current = await connect(currentDevice);
+    const otherDevice = new FakeHidDevice('hid-other');
+    const other = await connect(otherDevice);
+    await current.write([0, 8, 0, 0x72]);
+    time = 1001;
+    await other.write([0, 8, 0, 0x70]);
+    // A write to another keyboard must not discard this path's valid reply.
+    let timeout;
+    try {
+      const response = await Promise.race([
+        current.readP(),
+        new Promise((_, reject) => {
+          timeout = setTimeout(() => reject(new Error('Another HID path discarded the valid reply')), 100);
+        }),
+      ]);
+      assert.equal(response[2], 0x72);
+    } finally {
+      clearTimeout(timeout);
+    }
+    assert.equal((await other.readP())[2], 0x70);
+  } finally {
+    Date.now = previousClock;
+  }
 });
 
 test('UI sync handlers still consume only their messages after reopening', async () => {

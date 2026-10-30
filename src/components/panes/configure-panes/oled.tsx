@@ -7,8 +7,11 @@ import {
   getIsSelectedDeviceReady,
   getSelectedDevicePath,
   getSelectedKeyboardAPI,
+  getSelectedConnectedDevice,
 } from '../../../store/devicesSlice';
 import {OledPanel} from './oled-panel';
+import {getSelectedDefinition} from '../../../store/definitionsSlice';
+import {getZelvoqOledModel} from '../../../utils/zelvoq-oled';
 
 export const Title = 'Pantalla';
 export const Icon = () => <FontAwesomeIcon icon={faDesktop} />;
@@ -16,6 +19,10 @@ export const Pane = () => {
   const api = useAppSelector(getSelectedKeyboardAPI);
   const path = useAppSelector(getSelectedDevicePath);
   const ready = useAppSelector(getIsSelectedDeviceReady);
+  const definition = useAppSelector(getSelectedDefinition);
+  const device = useAppSelector(getSelectedConnectedDevice);
+  const model = getZelvoqOledModel(definition, device);
+  if (!model) return null;
   return (
     <SpanOverflowCell>
       <OledPanel
@@ -23,6 +30,7 @@ export const Pane = () => {
         api={api || null}
         deviceKey={path ?? ''}
         ready={ready}
+        model={model}
       />
     </SpanOverflowCell>
   );

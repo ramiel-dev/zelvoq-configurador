@@ -271,3 +271,43 @@ export function isZelvoqPlusDefinition(
     definition.name.replace(/\s+/g, '').toLowerCase() === 'zelvoq60plus'
   );
 }
+
+export type OledModel = 'plus' | 'corne' | 'sofle' | 'lily58';
+
+/** Exact embedded identities are only a menu gate; firmware is probed before writing. */
+export function getZelvoqOledModel(
+  definition: {name?: unknown; vendorProductId?: unknown} | null | undefined,
+  device: {vendorId?: unknown; productId?: unknown} | null | undefined,
+): OledModel | null {
+  if (isZelvoqPlusDefinition(definition, device)) return 'plus';
+  if (!definition || !device || typeof definition.name !== 'string')
+    return null;
+  const name = definition.name.replace(/\s+/g, '').toLowerCase();
+  const splits = [
+    {model: 'corne', vendorId: 0x4653, productId: 1, names: ['corne(zelvoq)']},
+    {
+      model: 'lily58',
+      vendorId: 0x04d8,
+      productId: 0xeb2d,
+      names: ['lily58(zelvoq)'],
+    },
+    {
+      model: 'sofle',
+      vendorId: 0xfc32,
+      productId: 0x0287,
+      names: ['sofle', 'soflev1'],
+    },
+  ] as const;
+  for (const split of splits) {
+    if (
+      device.vendorId === split.vendorId &&
+      device.productId === split.productId &&
+      (definition.vendorProductId === undefined ||
+        definition.vendorProductId ===
+          split.vendorId * 65536 + split.productId) &&
+      split.names.some((candidate) => candidate === name)
+    )
+      return split.model;
+  }
+  return null;
+}

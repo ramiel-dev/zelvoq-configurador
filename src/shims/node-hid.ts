@@ -4,7 +4,8 @@ import type {
   WebVIADevice,
 } from '../types/types';
 
-var lastWriteTimestamp = Date.now();
+// A write on one keyboard must not expire queued replies from another.
+let lastWriteTimestamps: Readonly<Record<string, number>> = {};
 // This is a bit cray
 const globalBuffer: {
   [path: string]: {currTime: number; message: Uint8Array}[];
@@ -164,6 +165,7 @@ const ExtendedHID = {
         // Reports and waiters belong to the old physical identity, even when
         // a replacement is assigned the same path during a connection refresh.
         globalBuffer[path] = [];
+        lastWriteTimestamps = {...lastWriteTimestamps, [path]: Date.now()};
         const pending = eventWaitBuffer[path].splice(0);
         for (const reject of pending) reject(new Error('HID device changed'));
       }
@@ -195,7 +197,7 @@ const ExtendedHID = {
     }
 
     read(fn: (err?: Error, data?: ArrayBuffer) => void) {
-      this.fastForwardGlobalBuffer(lastWriteTimestamp);
+      this.fastForwardGlobalBuffer(lastWriteTimestamps[this.path] ?? 0);
       if (globalBuffer[this.path].length > 0) {
         // this should be a noop normally
         fn(undefined, globalBuffer[this.path].shift()?.message as any);
@@ -229,7 +231,7 @@ const ExtendedHID = {
         await this.open();
       }
       const data = new Uint8Array(arr.slice(1));
-      lastWriteTimestamp = Date.now();
+      lastWriteTimestamps = {...lastWriteTimestamps, [this.path]: Date.now()};
       await this._hidDevice?._device.sendReport(0, data);
     }
   },

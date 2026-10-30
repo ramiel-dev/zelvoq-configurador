@@ -8,7 +8,13 @@ import {
   StaleOledSessionError,
   UnsupportedFirmwareError,
 } from '../../../utils/zelvoq-oled';
-import type {OledAPI, OledMode, OledState} from '../../../utils/zelvoq-oled';
+import type {
+  OledAPI,
+  OledMode,
+  OledState,
+  OledModel,
+} from '../../../utils/zelvoq-oled';
+import {OledDesignPreview, OLED_PREVIEW_FILES} from './oled-design-preview';
 
 const Surface = styled.section`
   color: var(--color_label-highlighted);
@@ -61,6 +67,28 @@ const Preview = styled.div`
   border-radius: 12px;
   padding: 24px;
   margin: 22px 0 8px;
+  figure {
+    margin: 0;
+    min-width: 0;
+  }
+  figcaption {
+    color: #c5d6ce;
+    font-size: 14px;
+    margin-bottom: 12px;
+  }
+  .screens {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: center;
+    gap: 20px;
+    text-align: center;
+  }
+  .portrait img,
+  .portrait .off {
+    max-width: 64px;
+    aspect-ratio: 1 / 4;
+    margin: auto;
+  }
   .off {
     aspect-ratio: 4;
   }
@@ -139,7 +167,16 @@ const descriptions = [
   'Un pequeño compañero que reacciona mientras escribes.',
   'Logo Zelvoq y estado del teclado en una vista sobria.',
 ] as const;
-const files = ['pulso', 'companion', 'signature'] as const;
+const corneDescriptions = [
+  'El modelo ocupa media pantalla; tu ritmo de escritura, la otra media.',
+  'El modelo junto al mismo compañero animado del Zelvoq Plus.',
+  'El modelo junto a la firma Zelvoq.',
+] as const;
+const splitDescriptions = [
+  'Tu capa y estado en una mitad; tu ritmo de escritura en la otra.',
+  'Tu capa y estado junto a un compañero que reacciona al escribir.',
+  'Tu capa y estado junto al logo Zelvoq.',
+] as const;
 type Phase =
   'reading' | 'ready' | 'applying' | 'unsupported' | 'error' | 'disconnected';
 
@@ -147,11 +184,20 @@ export function OledPanel({
   api,
   deviceKey,
   ready,
+  model = 'plus',
 }: {
   api: OledAPI | null;
   deviceKey: string;
   ready: boolean;
+  model?: OledModel;
 }) {
+  const split = model !== 'plus';
+  const keyboardName = {
+    plus: 'Zelvoq 60 Plus',
+    corne: 'Corne',
+    sofle: 'Sofle',
+    lily58: 'Lily58',
+  }[model];
   const [chosen, setChosen] = useState<OledMode>(0);
   const [enabled, setEnabled] = useState(true);
   const [confirmed, setConfirmed] = useState<OledState | null>(null);
@@ -161,8 +207,8 @@ export function OledPanel({
   const generation = useRef(0);
   const busy = useRef(false);
   const identity = useMemo(
-    () => ({api, deviceKey, ready}),
-    [api, deviceKey, ready],
+    () => ({api, deviceKey, ready, model}),
+    [api, deviceKey, ready, model],
   );
   const latest = useRef(identity);
   latest.current = identity;
@@ -195,7 +241,7 @@ export function OledPanel({
       );
       setMessage(
         error instanceof UnsupportedFirmwareError
-          ? 'El firmware no admite este control o su respuesta no es compatible. Actualiza el firmware Plus para habilitarlo.'
+          ? `El firmware no admite este control o su respuesta no es compatible. Actualiza el firmware de tu ${keyboardName} para habilitarlo.`
           : 'No pudimos leer la pantalla. Revisa la conexión del teclado y vuelve a intentarlo.',
       );
     } finally {
@@ -248,7 +294,9 @@ export function OledPanel({
       setPhase('ready');
       setMessage(
         result.enabled === false
-          ? 'Pantalla apagada y guardada en el teclado.'
+          ? split
+            ? 'Pantallas apagadas y guardadas en el teclado.'
+            : 'Pantalla apagada y guardada en el teclado.'
           : `${OLED_MODES[mode]} guardado en el teclado.`,
       );
     } catch (error) {
@@ -272,15 +320,20 @@ export function OledPanel({
       (confirmed.enabled !== undefined &&
         (enabled !== confirmed.enabled ||
           enabled !== confirmed.storedEnabled)));
-  const image = welcome ? 'welcome' : files[chosen];
   return (
-    <Surface aria-label="Pantalla OLED">
+    <Surface aria-label={split ? 'Pantallas OLED' : 'Pantalla OLED'}>
       <Content>
-        <h2>Pantalla</h2>
+        <h2>{split ? 'Pantallas' : 'Pantalla'}</h2>
         <p>
           Elige cómo se ve tu Zelvoq. Prueba los diseños y guarda tu favorito en
           el teclado.
         </p>
+        {split && (
+          <p>
+            Una mitad muestra tu capa y estado. La otra acompaña tu escritura
+            con el diseño que elijas.
+          </p>
+        )}
         <Power>
           <input
             type="checkbox"
@@ -292,45 +345,44 @@ export function OledPanel({
               setMessage('');
             }}
           />
-          Pantalla encendida
+          {split ? 'Pantallas encendidas' : 'Pantalla encendida'}
         </Power>
         <p>
           {confirmed?.enabled === undefined
             ? 'Elige tu diseño y guárdalo en el teclado.'
-            : 'Encendida de forma continua mientras el computador esté activo. Puedes apagarla y conservar tu diseño.'}
+            : split
+              ? 'Ambas permanecen encendidas mientras el computador esté activo. Puedes apagarlas juntas y conservar tu diseño.'
+              : 'Encendida de forma continua mientras el computador esté activo. Puedes apagarla y conservar tu diseño.'}
         </p>
         {confirmed && confirmed.enabled === undefined && (
           <p>
-            Actualiza el firmware Plus para poder encender o apagar la pantalla.
+            Actualiza el firmware de tu {keyboardName} para poder encender o
+            apagar {split ? 'las pantallas' : 'la pantalla'}.
           </p>
         )}
         <Preview>
-          {!enabled ? (
-            <div className="off" role="img" aria-label="Pantalla apagada" />
-          ) : (
-            <picture key={image}>
-              <source
-                media="(prefers-reduced-motion: reduce)"
-                srcSet={`${assetBase}${image}.png`}
-              />
-              <img
-                src={`${assetBase}${image}.gif`}
-                width="128"
-                height="32"
-                alt={
-                  welcome
-                    ? 'Bienvenida Zelvoq'
-                    : `Vista previa de ${OLED_MODES[chosen]}`
-                }
-              />
-            </picture>
-          )}
+          <OledDesignPreview
+            assetBase={assetBase}
+            model={model}
+            mode={chosen}
+            enabled={enabled}
+            welcome={welcome}
+          />
         </Preview>
         <p>
           {enabled
             ? 'Vista previa · actividad de escritura de ejemplo.'
-            : 'Vista previa · pantalla apagada.'}
+            : split
+              ? 'Vista previa · ambas pantallas apagadas.'
+              : 'Vista previa · pantalla apagada.'}
         </p>
+        {model === 'corne' && (
+          <p>
+            La mitad con USB muestra capa y WPM; la otra, el modelo y el diseño
+            elegido. Al cambiar el USB de lado, estas funciones cambian de
+            pantalla.
+          </p>
+        )}
         <PreviewAction
           type="button"
           onClick={() => setWelcome(true)}
@@ -353,13 +405,21 @@ export function OledPanel({
               }}
             >
               <img
-                src={`${assetBase}${files[index]}.png`}
+                src={`${assetBase}${split ? `split/${model}/secondary-` : ''}${OLED_PREVIEW_FILES[index]}.png`}
                 width="128"
                 height="32"
                 alt=""
               />
               <strong>{name}</strong>
-              <span>{descriptions[index]}</span>
+              <span>
+                {
+                  (model === 'corne'
+                    ? corneDescriptions
+                    : split
+                      ? splitDescriptions
+                      : descriptions)[index]
+                }
+              </span>
             </Design>
           ))}
         </Designs>
@@ -367,7 +427,7 @@ export function OledPanel({
           <p>
             En el teclado: <strong>{OLED_MODES[confirmed.mode]}</strong>
             {confirmed.enabled !== undefined &&
-              ` · ${confirmed.enabled ? 'Encendida' : 'Apagada'}`}
+              ` · ${split ? (confirmed.enabled ? 'Encendidas' : 'Apagadas') : confirmed.enabled ? 'Encendida' : 'Apagada'}`}
             {confirmed.enabled !== confirmed.storedEnabled &&
               confirmed.storedEnabled !== undefined &&
               ` · Guardada: ${confirmed.storedEnabled ? 'Encendida' : 'Apagada'}`}
@@ -381,7 +441,7 @@ export function OledPanel({
             : phase === 'applying'
               ? 'Aplicando y verificando el guardado…'
               : phase === 'disconnected'
-                ? 'Conecta tu Zelvoq 60 Plus para configurar la pantalla.'
+                ? `Conecta tu ${keyboardName} para configurar ${split ? 'las pantallas' : 'la pantalla'}.`
                 : message}
         </div>
         <Actions>

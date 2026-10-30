@@ -5,10 +5,13 @@ function installOledWebHidMock() {
   const deviceListeners = new Map();
   const calls = [];
   const held = [];
+  const fixture = window.__oledFixture || {};
+  const identities = {corne: [0x4653,1,'Corne (Zelvoq)'], sofle:[0xfc32,0x0287,'Sofle v1'], lily58:[0x04d8,0xeb2d,'Lily58 (Zelvoq)']};
+  const identity = identities[fixture.model] || [0x1209,3,'Zelvoq 60 Plus'];
   const model = {
     connected: true,
-    supported: true,
-    protocolVersion: 2,
+    supported: fixture.supported !== false,
+    protocolVersion: fixture.protocolVersion || 2,
     enabled: true,
     storedEnabled: true,
     readbackEnabled: null,
@@ -100,7 +103,7 @@ function installOledWebHidMock() {
               if (model.protocolVersion >= 2) model.storedEnabled = model.enabled;
             }
           } else unsupported(response);
-        } else if (channel === 3) { // Built-in RGB Matrix, preserved channel.
+        } else if (channel === 3 || channel === 2) { // Built-in RGB Matrix/underglow.
           if (command === 0x09) break;
           const fields = {1: 'rgbBrightness', 2: 'rgbEffect', 3: 'rgbSpeed', 4: 'rgbHue'};
           const field = fields[id];
@@ -144,9 +147,9 @@ function installOledWebHidMock() {
     return response;
   };
   const device = {
-    vendorId: 0x1209,
-    productId: 3,
-    productName: 'Zelvoq 60 Plus',
+    vendorId: identity[0],
+    productId: identity[1],
+    productName: identity[2],
     opened: false,
     collections: [{usagePage: 0xff60, usage: 0x61, inputReports: [{reportId: 0}], outputReports: [{reportId: 0}]}],
     async open() {

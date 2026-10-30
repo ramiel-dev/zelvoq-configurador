@@ -19,7 +19,7 @@ import * as Lighting from './configure-panes/lighting';
 import * as Macros from './configure-panes/macros';
 import * as SaveLoad from './configure-panes/save-load';
 import * as Oled from './configure-panes/oled';
-import {isZelvoqPlusDefinition} from 'src/utils/zelvoq-oled';
+import {getZelvoqOledModel} from 'src/utils/zelvoq-oled';
 import * as Layouts from './configure-panes/layouts';
 import * as RotaryEncoder from './configure-panes/custom/satisfaction75';
 import {makeCustomMenus} from './configure-panes/custom/menu-generator';
@@ -104,7 +104,7 @@ const getRowsForKeyboard = (): typeof Rows => {
   const device = useAppSelector(getSelectedConnectedDevice);
   const ready = useAppSelector(getIsSelectedDeviceReady);
   const includeOled =
-    ready && isZelvoqPlusDefinition(selectedDefinition, device);
+    ready && getZelvoqOledModel(selectedDefinition, device) !== null;
   const withOled = (rows: typeof Rows): typeof Rows =>
     includeOled ? [...rows, Oled] : rows;
 

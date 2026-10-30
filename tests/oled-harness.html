@@ -25,10 +25,13 @@
       const pending = [];
       let selected = 'A';
       let ready = true;
+      let previewModel = new URLSearchParams(location.search).get('model') || 'plus';
       const storageKey = 'zelvoq-oled-isolated-harness';
       if (new URLSearchParams(location.search).has('fresh')) {
         sessionStorage.removeItem(storageKey);
-        history.replaceState(null, '', location.pathname);
+        const clean = new URL(location.href);
+        clean.searchParams.delete('fresh');
+        history.replaceState(null, '', clean.pathname + clean.search);
       }
       const stored = JSON.parse(sessionStorage.getItem(storageKey) || '{}');
       function model(key) {
@@ -118,6 +121,7 @@
             api: ready ? api(selected) : null,
             deviceKey: selected,
             ready,
+            model: previewModel,
           }),
         );
       }
@@ -128,6 +132,10 @@
         select(key, isReady = true) {
           selected = key;
           ready = isReady;
+          render();
+        },
+        previewModel(value) {
+          previewModel = value;
           render();
         },
         behavior(value) {
