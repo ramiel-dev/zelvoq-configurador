@@ -1,5 +1,29 @@
 import React, {useEffect, useMemo, useRef, useState} from 'react';
-import styled from 'styled-components';
+import {FontAwesomeIcon} from '@fortawesome/react-fontawesome';
+import {
+  faDesktop,
+  faPowerOff,
+  faPlay,
+  faCheck,
+  faRotateRight,
+} from '@fortawesome/free-solid-svg-icons';
+import {
+  Surface,
+  Content,
+  Header,
+  PowerRow,
+  Power,
+  Preview,
+  PreviewAction,
+  PreviewCaption,
+  DesignHeading,
+  Designs,
+  Design,
+  Footer,
+  SaveState,
+  Message,
+  Actions,
+} from './oled-panel-styles';
 import {
   applyOledMode,
   applyOledSettings,
@@ -16,166 +40,15 @@ import type {
 } from '../../../utils/zelvoq-oled';
 import {OledDesignPreview, OLED_PREVIEW_FILES} from './oled-design-preview';
 
-const Surface = styled.section`
-  color: var(--color_label-highlighted);
-  background: var(--bg_menu);
-  padding: 28px;
-  min-height: 100%;
-  box-sizing: border-box;
-  h2 {
-    color: inherit;
-    margin: 0 0 8px;
-    font-size: 24px;
-  }
-  p {
-    font-size: 16px;
-    line-height: 1.5;
-  }
-  button {
-    font: inherit;
-    cursor: pointer;
-  }
-  button:focus-visible {
-    outline: 2px solid var(--color_accent);
-    outline-offset: 3px;
-  }
-  button:disabled {
-    cursor: default;
-    opacity: 0.5;
-  }
-`;
-const Content = styled.div`
-  max-width: 760px;
-  margin: 0 auto;
-`;
-const Power = styled.label`
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  min-height: 44px;
-  margin-top: 20px;
-  font-size: 18px;
-  input {
-    width: 22px;
-    height: 22px;
-    accent-color: var(--color_accent);
-  }
-`;
-const Preview = styled.div`
-  background: #080b0a;
-  border: 1px solid var(--border_color_cell);
-  border-radius: 12px;
-  padding: 24px;
-  margin: 22px 0 8px;
-  figure {
-    margin: 0;
-    min-width: 0;
-  }
-  figcaption {
-    color: #c5d6ce;
-    font-size: 14px;
-    margin-bottom: 12px;
-  }
-  .screens {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    align-items: center;
-    gap: 20px;
-    text-align: center;
-  }
-  .portrait img,
-  .portrait .off {
-    max-width: 64px;
-    aspect-ratio: 1 / 4;
-    margin: auto;
-  }
-  .off {
-    aspect-ratio: 4;
-  }
-  img {
-    display: block;
-    width: 100%;
-    height: auto;
-    aspect-ratio: 4;
-    image-rendering: pixelated;
-  }
-`;
-const Designs = styled.div`
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 12px;
-  margin: 22px 0;
-  @media (max-width: 600px) {
-    grid-template-columns: 1fr;
-  }
-`;
-const Design = styled.button<{$selected: boolean}>`
-  color: inherit;
-  text-align: left;
-  padding: 14px;
-  border-radius: 9px;
-  background: var(--bg_control);
-  border: 2px solid
-    ${({$selected}) => ($selected ? 'var(--color_accent)' : 'var(--border_color_cell)')};
-  img {
-    width: 100%;
-    height: auto;
-    aspect-ratio: 4;
-    image-rendering: pixelated;
-    display: block;
-    margin-bottom: 12px;
-  }
-  strong {
-    display: block;
-    margin-bottom: 5px;
-  }
-  span {
-    display: block;
-    font-size: 14px;
-    line-height: 1.4;
-  }
-`;
-const Actions = styled.div`
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
-  margin-top: 18px;
-  button {
-    padding: 10px 18px;
-    border-radius: 7px;
-    border: 1px solid var(--color_accent);
-    color: inherit;
-    background: transparent;
-    min-height: 44px;
-  }
-  button:first-child {
-    color: var(--color_inside-accent);
-    background: var(--color_accent);
-  }
-`;
-const PreviewAction = styled.button`
-  color: inherit;
-  background: transparent;
-  border: 1px solid var(--border_color_cell);
-  border-radius: 6px;
-  padding: 8px 12px;
-  min-height: 40px;
-`;
-
 const descriptions = [
-  'Una firma de marca que sigue tu ritmo de escritura.',
+  'Un pulso que sigue tu ritmo de escritura.',
   'Un pequeño compañero que reacciona mientras escribes.',
-  'Logo Zelvoq y estado del teclado en una vista sobria.',
-] as const;
-const corneDescriptions = [
-  'El modelo ocupa media pantalla; tu ritmo de escritura, la otra media.',
-  'El modelo junto al mismo compañero animado del Zelvoq Plus.',
-  'El modelo junto a la firma Zelvoq.',
+  'La firma Zelvoq en una vista sobria.',
 ] as const;
 const splitDescriptions = [
-  'Tu capa y estado en una mitad; tu ritmo de escritura en la otra.',
-  'Tu capa y estado junto a un compañero que reacciona al escribir.',
-  'Tu capa y estado junto al logo Zelvoq.',
+  'Tu modelo junto a un pulso que sigue tu ritmo.',
+  'Tu modelo y una mascota que reacciona al escribir.',
+  'Tu modelo junto a la firma Zelvoq. Simple y sobrio.',
 ] as const;
 type Phase =
   'reading' | 'ready' | 'applying' | 'unsupported' | 'error' | 'disconnected';
@@ -323,73 +196,118 @@ export function OledPanel({
   return (
     <Surface aria-label={split ? 'Pantallas OLED' : 'Pantalla OLED'}>
       <Content>
-        <h2>{split ? 'Pantallas' : 'Pantalla'}</h2>
-        <p>
-          Elige cómo se ve tu Zelvoq. Prueba los diseños y guarda tu favorito en
-          el teclado.
-        </p>
-        {split && (
-          <p>
-            Una mitad muestra tu capa y estado. La otra acompaña tu escritura
-            con el diseño que elijas.
-          </p>
-        )}
-        <Power>
-          <input
-            type="checkbox"
-            checked={enabled}
-            disabled={phase !== 'ready' || confirmed?.enabled === undefined}
-            onChange={(event) => {
-              setEnabled(event.target.checked);
-              setWelcome(false);
-              setMessage('');
-            }}
-          />
-          {split ? 'Pantallas encendidas' : 'Pantalla encendida'}
-        </Power>
-        <p>
-          {confirmed?.enabled === undefined
-            ? 'Elige tu diseño y guárdalo en el teclado.'
-            : split
-              ? 'Ambas permanecen encendidas mientras el computador esté activo. Puedes apagarlas juntas y conservar tu diseño.'
-              : 'Encendida de forma continua mientras el computador esté activo. Puedes apagarla y conservar tu diseño.'}
-        </p>
+        <Header>
+          <div>
+            <span className="model">
+              {keyboardName} · {split ? 'OLED dual' : 'OLED'}
+            </span>
+            <h2>{split ? 'Pantallas' : 'Pantalla'}</h2>
+            <p>
+              Un detalle que hace tuyo el teclado. Elige un diseño y guarda tu
+              favorito.
+            </p>
+          </div>
+          <span className="display-icon" aria-hidden="true">
+            <FontAwesomeIcon icon={faDesktop} />
+          </span>
+        </Header>
+        <PowerRow>
+          <div className="power-copy">
+            <FontAwesomeIcon className="power-icon" icon={faPowerOff} />
+            <div>
+              <strong>
+                {split
+                  ? enabled
+                    ? 'Pantallas encendidas'
+                    : 'Pantallas apagadas'
+                  : enabled
+                    ? 'Pantalla encendida'
+                    : 'Pantalla apagada'}
+              </strong>
+              <p>
+                {confirmed?.enabled === undefined
+                  ? 'El encendido requiere firmware compatible.'
+                  : enabled
+                    ? split
+                      ? 'Encendidas mientras el computador esté activo.'
+                      : 'Encendida mientras el computador esté activo.'
+                    : 'Tu diseño se conserva al apagar.'}
+              </p>
+            </div>
+          </div>
+          <Power>
+            <input
+              type="checkbox"
+              aria-label={split ? 'Pantallas encendidas' : 'Pantalla encendida'}
+              checked={enabled}
+              disabled={phase !== 'ready' || confirmed?.enabled === undefined}
+              onChange={(event) => {
+                setEnabled(event.target.checked);
+                setWelcome(false);
+                setMessage('');
+              }}
+            />
+            <span aria-hidden="true" />
+          </Power>
+        </PowerRow>
         {confirmed && confirmed.enabled === undefined && (
-          <p>
-            Actualiza el firmware de tu {keyboardName} para poder encender o
-            apagar {split ? 'las pantallas' : 'la pantalla'}.
-          </p>
+          <PreviewCaption>
+            <p>
+              Actualiza el firmware de tu {keyboardName} para poder encender o
+              apagar {split ? 'las pantallas' : 'la pantalla'}.
+            </p>
+          </PreviewCaption>
         )}
         <Preview>
-          <OledDesignPreview
-            assetBase={assetBase}
-            model={model}
-            mode={chosen}
-            enabled={enabled}
-            welcome={welcome}
-          />
+          <div className="preview-toolbar">
+            <div className="preview-title">
+              <strong>VISTA PREVIA</strong>
+              <span className="mode">
+                {welcome
+                  ? 'Bienvenida'
+                  : enabled
+                    ? OLED_MODES[chosen]
+                    : 'Apagada'}
+              </span>
+            </div>
+            <PreviewAction
+              type="button"
+              onClick={() => setWelcome(true)}
+              disabled={welcome || !enabled}
+            >
+              <FontAwesomeIcon icon={faPlay} />
+              Ver bienvenida
+            </PreviewAction>
+          </div>
+          <div className="preview-body">
+            <OledDesignPreview
+              assetBase={assetBase}
+              model={model}
+              mode={chosen}
+              enabled={enabled}
+              welcome={welcome}
+            />
+          </div>
         </Preview>
-        <p>
-          {enabled
-            ? 'Vista previa · actividad de escritura de ejemplo.'
-            : split
-              ? 'Vista previa · ambas pantallas apagadas.'
-              : 'Vista previa · pantalla apagada.'}
-        </p>
-        {model === 'corne' && (
+        <PreviewCaption>
           <p>
-            La mitad con USB muestra capa y WPM; la otra, el modelo y el diseño
-            elegido. Al cambiar el USB de lado, estas funciones cambian de
-            pantalla.
+            {enabled
+              ? 'Vista previa · actividad de escritura de ejemplo.'
+              : split
+                ? 'Vista previa · ambas pantallas apagadas.'
+                : 'Vista previa · pantalla apagada.'}
           </p>
-        )}
-        <PreviewAction
-          type="button"
-          onClick={() => setWelcome(true)}
-          disabled={welcome || !enabled}
-        >
-          Ver bienvenida
-        </PreviewAction>
+          {split && (
+            <p>
+              USB: capa y WPM. Otra mitad: modelo y diseño. Al cambiar el USB de
+              lado, las vistas también cambian.
+            </p>
+          )}
+        </PreviewCaption>
+        <DesignHeading>
+          <h3>Elige tu diseño</h3>
+          <p>Tres formas de acompañar tu escritura.</p>
+        </DesignHeading>
         <Designs role="group" aria-label="Diseño de pantalla">
           {OLED_MODES.map((name, index) => (
             <Design
@@ -404,38 +322,31 @@ export function OledPanel({
                 setMessage('');
               }}
             >
-              <img
-                src={`${assetBase}${split ? `split/${model}/secondary-` : ''}${OLED_PREVIEW_FILES[index]}.png`}
-                width="128"
-                height="32"
-                alt=""
-              />
-              <strong>{name}</strong>
-              <span>
-                {
-                  (model === 'corne'
-                    ? corneDescriptions
-                    : split
-                      ? splitDescriptions
-                      : descriptions)[index]
-                }
+              <span className="design-heading">
+                <strong>{name}</strong>
+                <span className="selection" aria-hidden="true">
+                  {chosen === index && <FontAwesomeIcon icon={faCheck} />}
+                </span>
+              </span>
+              <div className="thumbnail">
+                <img
+                  src={`${assetBase}${split ? `split/${model}/secondary-` : ''}${OLED_PREVIEW_FILES[index]}.png`}
+                  width="128"
+                  height="32"
+                  alt=""
+                />
+              </div>
+              <span className="description">
+                {(split ? splitDescriptions : descriptions)[index]}
               </span>
             </Design>
           ))}
         </Designs>
-        {confirmed && (
-          <p>
-            En el teclado: <strong>{OLED_MODES[confirmed.mode]}</strong>
-            {confirmed.enabled !== undefined &&
-              ` · ${split ? (confirmed.enabled ? 'Encendidas' : 'Apagadas') : confirmed.enabled ? 'Encendida' : 'Apagada'}`}
-            {confirmed.enabled !== confirmed.storedEnabled &&
-              confirmed.storedEnabled !== undefined &&
-              ` · Guardada: ${confirmed.storedEnabled ? 'Encendida' : 'Apagada'}`}
-            {confirmed.mode !== confirmed.storedMode &&
-              ` · Guardado: ${OLED_MODES[confirmed.storedMode]}`}
-          </p>
-        )}
-        <div role={phase === 'error' ? 'alert' : 'status'} aria-live="polite">
+        <Message
+          $error={phase === 'error'}
+          role={phase === 'error' ? 'alert' : 'status'}
+          aria-live="polite"
+        >
           {phase === 'reading'
             ? 'Leyendo la pantalla del teclado…'
             : phase === 'applying'
@@ -443,23 +354,52 @@ export function OledPanel({
               : phase === 'disconnected'
                 ? `Conecta tu ${keyboardName} para configurar ${split ? 'las pantallas' : 'la pantalla'}.`
                 : message}
-        </div>
-        <Actions>
-          <button
-            type="button"
-            disabled={!canApply || waiting}
-            onClick={() => void apply()}
-          >
-            Aplicar y guardar
-          </button>
-          <button
-            type="button"
-            disabled={!api || !ready || waiting}
-            onClick={() => void load()}
-          >
-            Releer teclado
-          </button>
-        </Actions>
+        </Message>
+        <Footer>
+          <div>
+            <SaveState $pending={!!canApply}>
+              {phase === 'applying'
+                ? 'Guardando en el teclado…'
+                : phase === 'ready'
+                  ? canApply
+                    ? 'Cambios sin guardar'
+                    : 'Todo guardado en el teclado'
+                  : phase === 'reading'
+                    ? 'Leyendo configuración…'
+                    : 'Configuración sin confirmar'}
+            </SaveState>
+            {confirmed && (
+              <p className="device-state">
+                En el teclado: <strong>{OLED_MODES[confirmed.mode]}</strong>
+                {confirmed.enabled !== undefined &&
+                  ` · ${split ? (confirmed.enabled ? 'Encendidas' : 'Apagadas') : confirmed.enabled ? 'Encendida' : 'Apagada'}`}
+                {confirmed.enabled !== confirmed.storedEnabled &&
+                  confirmed.storedEnabled !== undefined &&
+                  ` · Guardada: ${confirmed.storedEnabled ? 'Encendida' : 'Apagada'}`}
+                {confirmed.mode !== confirmed.storedMode &&
+                  ` · Guardado: ${OLED_MODES[confirmed.storedMode]}`}
+              </p>
+            )}
+          </div>
+          <Actions>
+            <button
+              type="button"
+              disabled={!canApply || waiting}
+              onClick={() => void apply()}
+            >
+              <FontAwesomeIcon icon={faCheck} />
+              Aplicar y guardar
+            </button>
+            <button
+              type="button"
+              disabled={!api || !ready || waiting}
+              onClick={() => void load()}
+            >
+              <FontAwesomeIcon icon={faRotateRight} />
+              Releer teclado
+            </button>
+          </Actions>
+        </Footer>
       </Content>
     </Surface>
   );

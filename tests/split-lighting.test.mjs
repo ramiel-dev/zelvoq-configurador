@@ -23,7 +23,7 @@ test('compiled effect labels use the exact final firmware enum values', () => {
   assert.deepEqual(splitLightingEffects('corne'), ['All Off','Solid Color','Breathing','Cycle Left/Right','Rainbow Moving Chevron','Cycle Pinwheel','Solid Reactive Simple','Solid Reactive']);
   for (const model of ['sofle','lily58']) {
     const options = splitLightingEffects(model);
-    assert.equal(options.length, model === 'sofle' ? 27 : 25);
+    assert.equal(options.length, model === 'sofle' ? 15 : 25);
     assert.equal(options[0], 'All Off');
     assert.equal(options[1], 'Solid Color');
     assert.equal(options[2], 'Breathing 1');
@@ -32,11 +32,15 @@ test('compiled effect labels use the exact final firmware enum values', () => {
     assert.equal(options[8], 'Rainbow Mood 3');
     assert.equal(options[9], 'Rainbow Swirl 1');
     assert.equal(options[14], 'Rainbow Swirl 6');
-    assert.equal(options[15], 'Gradient 1');
-    assert.equal(options[24], 'Gradient 10');
+    if (model === 'lily58') {
+      assert.equal(options[15], 'Gradient 1');
+      assert.equal(options[24], 'Gradient 10');
+    } else {
+      assert.equal(options.some(x => /Gradient|RGB Test|Alternating/.test(x)), false);
+    }
     assert.equal(options.some(x => /Snake|Knight|Christmas|Twinkle/.test(x)), false);
   }
-  assert.deepEqual(splitLightingEffects('sofle').slice(25), ['RGB Test','Alternating']);
+  assert.equal(splitLightingEffects('sofle').at(-1), 'Rainbow Swirl 6');
 });
 
 test('only exact split identity with a valid v2 signature enables the compiled profile', async () => {

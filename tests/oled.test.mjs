@@ -589,8 +589,8 @@ test('split preview uses both actual model screens and preserves the Plus previe
       }));
       assert.ok(markup.includes(`/split/${model}/primary-${file}.png`), markup);
       assert.ok(markup.includes(`/split/${model}/secondary-${file}.gif`), markup);
-      assert.ok(markup.includes(model === 'corne' ? 'Capa y WPM · USB' : 'Mitad con USB'), markup);
-      assert.ok(markup.includes(model === 'corne' ? 'Modelo + animación' : 'Otra mitad'), markup);
+      assert.ok(markup.includes('Capa y WPM · USB'), markup);
+      assert.ok(markup.includes('Modelo + animación'), markup);
       assert.ok(!markup.includes('60+'), markup);
     }
     const off = renderToStaticMarkup(React.createElement(OledDesignPreview, {
@@ -618,12 +618,13 @@ test('Corne preview identifies status on USB half and model/animation on the oth
   assert.match(html,/split\/corne\/secondary-companion\.gif/);
 });
 
-test('Other split previews retain their existing orientation', () => {
+test('Lily58 and Sofle previews identify status and model/animation with their orientations', () => {
   for(const model of ['sofle','lily58']) {
     const html=renderToStaticMarkup(React.createElement(OledDesignPreview,{assetBase:'/oled/',model,mode:0,enabled:true,welcome:false}));
-    assert.match(html,/Mitad con USB/);
-    assert.match(html,/Otra mitad/);
-    assert.doesNotMatch(html,/Modelo \+ animación/);
+    assert.match(html,/Capa y WPM · USB/);
+    assert.match(html,/Modelo \+ animación/);
+    assert.match(html, /width="128" height="32"/);
+    assert.doesNotMatch(html, /width="32" height="128"/);
   }
 });
 

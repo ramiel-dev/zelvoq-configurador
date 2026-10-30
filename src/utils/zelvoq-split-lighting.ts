@@ -29,8 +29,7 @@ export function splitLightingEffects(model: SplitLightingProfile): string[] {
     ...series('Breathing', 4),
     ...series('Rainbow Mood', 3),
     ...series('Rainbow Swirl', 6),
-    ...series('Gradient', 10),
-    ...(model === 'sofle' ? ['RGB Test', 'Alternating'] : []),
+    ...(model === 'lily58' ? series('Gradient', 10) : []),
   ];
 }
 

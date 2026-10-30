@@ -314,8 +314,8 @@ export async function runSplitOledBrowserChecks(page, base = 'http://127.0.0.1:4
     const power = page.getByRole('checkbox', {name: 'Pantallas encendidas', exact: true});
     const apply = page.getByRole('button', {name: 'Aplicar y guardar'});
     check(await power.isChecked(), `${model}: expected power on`);
-    const primaryLabel = model === 'corne' ? 'Capa y WPM · USB' : 'Mitad con USB';
-    const secondaryLabel = model === 'corne' ? 'Modelo + animación' : 'Otra mitad';
+    const primaryLabel = 'Capa y WPM · USB';
+    const secondaryLabel = 'Modelo + animación';
     check(await page.getByText(primaryLabel, {exact:true}).isVisible(), `${model}: primary missing`);
     check(await page.getByText(secondaryLabel, {exact:true}).isVisible(), `${model}: secondary missing`);
     await page.waitForFunction(() => [...document.querySelectorAll('img')].every(i => i.complete && i.naturalWidth > 0));
@@ -375,19 +375,16 @@ export async function runSplitLightingBrowserChecks(page, fixtureSource, base = 
           check(labels.some(label => model === 'corne' ? label === 'Typing Heatmap' : label === 'Snake 1'), `${model}: old firmware menu changed`);
           check(await isolated.evaluate(() => window.__oledHidMock.calls.every(c => c[0] !== 7 && c[0] !== 9)), `${model}: probe wrote HID`);
         } else {
-          const expected = model === 'corne' ? 8 : model === 'sofle' ? 27 : 25;
+          const expected = model === 'corne' ? 8 : model === 'sofle' ? 15 : 25;
           check(labels.length === expected, `${model}: ${labels.length} effects instead of ${expected}`);
           check(!labels.some(label=>/Heatmap|Snake|Knight|Christmas|Twinkle/.test(label)), `${model}: unavailable effect offered`);
-          const target = model === 'corne' ? 'Solid Reactive Simple' : 'Gradient 1';
-          const value = model === 'corne' ? 6 : 15;
+          const target = model === 'corne' ? 'Solid Reactive Simple' : model === 'sofle' ? 'Rainbow Swirl 1' : 'Gradient 1';
+          const value = model === 'corne' ? 6 : model === 'sofle' ? 9 : 15;
           await isolated.getByRole('option',{name:target,exact:true}).click();
           await isolated.waitForFunction(expected => window.__oledHidMock.model.rgbEffect === expected, value);
           check(await isolated.evaluate(({value,channel}) => window.__oledHidMock.calls.some(c=>c[0]===7 && c[1]===channel && c[2]===2 && c[3]===value), {value,channel:model === 'corne' ? 3 : 2}), `${model}: effect did not use compiled enum`);
           if (model === 'sofle') {
-            await isolated.getByRole('combobox').click();
-            await isolated.getByRole('option',{name:'RGB Test',exact:true}).click();
-            await isolated.waitForFunction(()=>window.__oledHidMock.model.rgbEffect===25);
-            check(await isolated.getByText('Color',{exact:true}).count() === 0, 'Sofle: test mode color control still visible');
+            check(!labels.some(label => /Gradient|RGB Test|Alternating/.test(label)), 'Sofle: removed effect offered');
           }
         }
         results.push(`${model} ${legacy ? 'legacy' : 'OLED v2'}: ${labels.length} correctly gated effects; HID enum values verified`);

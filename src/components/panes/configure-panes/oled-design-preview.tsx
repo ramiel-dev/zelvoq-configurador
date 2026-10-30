@@ -19,20 +19,15 @@ export function OledDesignPreview({
 }) {
   const image = welcome ? 'welcome' : OLED_PREVIEW_FILES[mode];
   const screen = (part?: 'primary' | 'secondary') => {
-    const portrait = model === 'sofle' && part === 'primary';
     const imagePath = part ? `split/${model}/${part}-${image}` : image;
     const name =
       part === 'primary'
-        ? model === 'corne'
-          ? 'Capa y WPM · USB'
-          : 'Mitad con USB'
+        ? 'Capa y WPM · USB'
         : part === 'secondary'
-          ? model === 'corne'
-            ? 'Modelo + animación'
-            : 'Otra mitad'
+          ? 'Modelo + animación'
           : 'Pantalla';
     return (
-      <figure className={portrait ? 'portrait' : undefined}>
+      <figure>
         {part && <figcaption>{name}</figcaption>}
         {!enabled ? (
           <div className="off" role="img" aria-label={`${name} apagada`} />
@@ -44,8 +39,8 @@ export function OledDesignPreview({
             />
             <img
               src={`${assetBase}${imagePath}.gif`}
-              width={portrait ? 32 : 128}
-              height={portrait ? 128 : 32}
+              width={128}
+              height={32}
               alt={
                 welcome
                   ? `Bienvenida Zelvoq · ${name}`

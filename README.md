@@ -66,9 +66,10 @@ y el leído de EEPROM. Las vistas previas son locales, con actividad de ejemplo.
 Compatible con Zelvoq 60 Plus y los Corne, Sofle v1 y Lily58 cableados con
 firmware OLED Zelvoq. En los splits, la mitad conectada por USB muestra capa,
 velocidad y modificadores; la otra muestra Pulso, Compañero o la firma de marca.
-En Corne, esa segunda pantalla se divide en dos áreas de 64×32: modelo y
+En los tres modelos, esa segunda pantalla se divide en dos áreas de 64×32: modelo y
 Pulso, la misma mascota del Zelvoq Plus o Firma. Con USB en la izquierda,
-capa/WPM quedan a la izquierda y modelo/diseño a la derecha. Al cambiar el
+capa/WPM quedan a la izquierda y modelo/diseño a la derecha. Sofle conserva
+el estado horizontal con tres dígitos grandes, igual que Corne y Lily58. Al cambiar el
 USB de lado, los roles siguen la conexión. El interruptor **Pantallas
 encendidas** controla las dos juntas. Se eligen diseños incluidos; no hay
 editor ni carga de imágenes propias.
@@ -81,12 +82,13 @@ remapear una tecla ni resetear VIA.
 Se reutiliza la conexión VIA y su cola: canal custom0, GETcap70, GET/SETmode71
 GET/SETpower72 y SAVE. Los controles de pantalla no escriben RGB, keymaps o macros.
 
-En estos tres splits, la firma OLED habilita un catálogo RGB compatible: Corne expone los siete efectos compartidos por sus builds OLED; Sofle conserva respiración, arcoíris,
-gradientes, prueba RGB y alternancia; Lily58 conserva respiración, arcoíris y
+En estos tres splits, la firma OLED habilita un catálogo RGB compatible: Corne expone los siete efectos compartidos por sus builds OLED; Sofle conserva respiración, Rainbow Mood y Rainbow Swirl; Lily58 conserva respiración, arcoíris y
 gradientes. La lista cambia solo tras validar la firma OLED v2; el firmware
 anterior sin esa firma conserva sus menús. Algunos Corne OLED v2 anteriores
 incluyen además Multi Nexus/Splash/Solid Splash: el menú usa el subconjunto
-común de siete, cuyos IDs no cambiaron. Un error de lectura oculta únicamente el menú RGB
+común de siete, cuyos IDs no cambiaron. Sofle usa el subconjunto 1–14,
+compartido con sus builds OLED anteriores; Gradient, RGB Test y Alternating
+se retiraron del firmware nuevo para priorizar sus pantallas. Un error de lectura oculta únicamente el menú RGB
 hasta reconectar y permite seguir configurando las otras funciones. Los errores/desconexiones no
 se presentan como guardado correcto, y cambiar de dispositivo cancela las
 operaciones pendientes de esa selección.
@@ -115,3 +117,11 @@ Las definiciones se mantienen internamente en `zelvoq/definitions/`, pasan
 por `zelvoq-definitions` y se publican con un build revisado. El código fuente
 upstream del editor permanece para mantenimiento interno, sin ruta ni controles
 en la aplicación pública.
+
+## Panel de pantalla
+
+La pestaña Pantalla comparte una vista previa enmarcada, selector de diseños,
+interruptor de encendido y estado de cambios pendientes para Corne, Sofle,
+Lily58 y Zelvoq 60 Plus. Respeta los temas claro/oscuro y movimiento reducido.
+La selección se previsualiza en el navegador; solo **Aplicar y guardar** cambia
+el teclado y verifica la persistencia.
